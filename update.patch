@@ -1,0 +1,22 @@
+--- src/components/MapContainer.tsx
++++ src/components/MapContainer.tsx
+@@ -578,7 +578,8 @@
+         {
+           attribution: '&copy; OpenWeatherMap',
+           opacity: 0.6,
+-          maxZoom: 19
++          maxZoom: 19,
++          zIndex: 10
+         }
+       );
+       precipTile.addTo(precipGroup);
+@@ -594,7 +595,8 @@
+         {
+           attribution: '&copy; OpenWeatherMap',
+           opacity: 0.5,
+-          maxZoom: 19
++          maxZoom: 19,
++          zIndex: 10
+         }
+       );
+       windTile.addTo(windGroup);

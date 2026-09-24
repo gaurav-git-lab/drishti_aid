@@ -1,0 +1,6 @@
+{
+  "name": "DRISHTI-AID Satellite Disaster Response System",
+  "description": "Real-time satellite SAR change detection, AI flood risk classification, safe evacuation routing, and interactive GIS situational dashboard.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
