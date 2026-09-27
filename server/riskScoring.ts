@@ -9,8 +9,8 @@
  * - Low: < 25 (Green #22c55e) -> Safe buffer zone, staging ground
  */
 
-import { SCENARIOS, getScenario } from './geoData.ts';
-import { runSarChangeDetection } from './changeDetection.ts';
+import { SCENARIOS } from './geoData';
+import { runSarChangeDetection } from './changeDetection';
 
 export interface RiskZoneFeature {
   type: 'Feature';
@@ -55,7 +55,7 @@ export function computeRiskZones(
   timelineHour: number = 4
 ): RiskAnalysisResult {
   const startTime = Date.now();
-  const scenario = getScenario(scenarioId);
+  const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
   const changeDetection = runSarChangeDetection(scenarioId, timelineHour);
   const bounds = scenario.bounds;
   const [south, west] = bounds[0];

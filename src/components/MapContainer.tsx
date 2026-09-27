@@ -36,12 +36,7 @@ import {
   Activity,
   AlertTriangle,
   Waves,
-  CloudRain,
-  Wind,
 } from 'lucide-react';
-import { fetchWeatherRadarApi, fetchWeatherWindApi } from '../services/api';
-import { RadarDataResponse, WindDataResponse } from '../types';
-import { WeatherWindHud } from './WeatherWindHud';
 
 interface MapContainerProps {
   scenario: DisasterScenario;
@@ -214,18 +209,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const [isSwipeMode, setIsSwipeMode] = useState<boolean>(false);
   const [swipeSplit, setSwipeSplit] = useState<number>(50); // percentage 0 - 100
 
-  // Weather Radar & Wind States
-  const [radarData, setRadarData] = useState<RadarDataResponse | null>(null);
-  const [radarMode, setRadarMode] = useState<'live' | 'disaster'>('live');
-  const [radarFrameIdx, setRadarFrameIdx] = useState<number>(0);
-  const [isRadarPlaying, setIsRadarPlaying] = useState<boolean>(false);
-  const [radarOpacity, setRadarOpacity] = useState<number>(1.0);
-
-  const [windData, setWindData] = useState<WindDataResponse | null>(null);
-  const [windMode, setWindMode] = useState<'streamlines' | 'vectors' | 'both'>('both');
-  const windCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const windAnimIdRef = useRef<number | null>(null);
-
   // 1. Initialize Map
   useEffect(() => {
     if (!mapElementRef.current) return;
@@ -238,19 +221,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     const map = L.map(mapElementRef.current, {
       center: scenario.center,
       zoom: scenario.zoom,
-      minZoom: 5,
+      minZoom: 10,
       maxZoom: 19,
       zoomControl: false, // We use custom crisp high-contrast controls
     });
 
-    // 1. Create custom panes FIRST before adding ANY layers
-    if (!map.getPane('weatherPane')) {
-      const weatherPane = map.createPane('weatherPane');
-      weatherPane.style.zIndex = '500';
-      weatherPane.style.pointerEvents = 'none';
-    }
-
-    // Basemap definitions
+    // Define 4 clear basemaps
     const darkTile = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
       {
@@ -260,6 +236,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       }
     );
 
+    // Light Voyager: extremely clear streets, roads, rivers, water bodies, and landmarks
     const lightTile = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       {
@@ -269,6 +246,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       }
     );
 
+    // Esri High-Resolution Photographic Satellite
     const satelliteTile = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       {
@@ -277,6 +255,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       }
     );
 
+    // OpenTopoMap for terrain/elevations
     const terrainTile = L.tileLayer(
       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       {
@@ -297,16 +276,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     activeTile.addTo(map);
     activeBasemapRef.current = currentBasemap;
 
-    // Clear stale layers from refs before attaching to map
-    copernicusSentinelGroupRef.current.clearLayers();
-    floodLayerGroupRef.current.clearLayers();
-    riskLayerGroupRef.current.clearLayers();
-    riskLabelGroupRef.current.clearLayers();
-    routeLayerGroupRef.current.clearLayers();
-    shelterLayerGroupRef.current.clearLayers();
-    weatherPrecipLayerGroupRef.current.clearLayers();
-    weatherWindLayerGroupRef.current.clearLayers();
-
     // Attach Layer Groups in logical order
     copernicusSentinelGroupRef.current.addTo(map);
     floodLayerGroupRef.current.addTo(map);
@@ -317,21 +286,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     weatherPrecipLayerGroupRef.current.addTo(map);
     weatherWindLayerGroupRef.current.addTo(map);
 
+    // Create a custom pane for weather layers so they render above standard tiles
+    map.createPane('weatherPane');
+    map.getPane('weatherPane')!.style.zIndex = '500';
+    map.getPane('weatherPane')!.style.pointerEvents = 'none';
+
     mapRef.current = map;
 
     return () => {
-      try {
-        copernicusSentinelGroupRef.current.clearLayers();
-        floodLayerGroupRef.current.clearLayers();
-        riskLayerGroupRef.current.clearLayers();
-        riskLabelGroupRef.current.clearLayers();
-        routeLayerGroupRef.current.clearLayers();
-        shelterLayerGroupRef.current.clearLayers();
-        weatherPrecipLayerGroupRef.current.clearLayers();
-        weatherWindLayerGroupRef.current.clearLayers();
-      } catch (e) {
-        // Safe ignore
-      }
       map.remove();
       mapRef.current = null;
     };
@@ -610,404 +572,47 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     });
   }, [routesResult, layerVisibility.safeRoutes, focusMode, onSelectFeature]);
 
-  // 6A. Fetch RainViewer Doppler Radar Catalog
-  useEffect(() => {
-    let isMounted = true;
-    if (!layerVisibility.weatherPrecipitation) return;
-
-    fetchWeatherRadarApi()
-      .then((data) => {
-        if (!isMounted) return;
-        setRadarData(data as any);
-        if (data.past && data.past.length > 0) {
-          setRadarFrameIdx(data.past.length - 1);
-        }
-      })
-      .catch((err) => {
-        console.warn('Radar fetch notice:', err);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [layerVisibility.weatherPrecipitation]);
-
-  // 6B. Radar Frame Animation Loop
-  useEffect(() => {
-    if (!isRadarPlaying || !radarData || !radarData.past || radarData.past.length === 0 || radarMode !== 'live') {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setRadarFrameIdx((prev) => (prev + 1) % radarData.past.length);
-    }, 850);
-
-    return () => clearInterval(interval);
-  }, [isRadarPlaying, radarData, radarMode]);
-
-  // 6C. Render Precipitation Radar Layers (Live RainViewer & Disaster Storm Cells)
+  // 6. Render Weather Layers
   useEffect(() => {
     if (!mapRef.current) return;
-    const map = mapRef.current;
-
-    // Ensure weatherPane exists
-    if (!map.getPane('weatherPane')) {
-      const weatherPane = map.createPane('weatherPane');
-      weatherPane.style.zIndex = '500';
-      weatherPane.style.pointerEvents = 'none';
-    }
-
+    
+    // Precipitation Layer
     const precipGroup = weatherPrecipLayerGroupRef.current;
     precipGroup.clearLayers();
-
-    if (!layerVisibility.weatherPrecipitation) return;
-
-    if (radarMode === 'live' && radarData && radarData.past && radarData.past.length > 0) {
-      const frame = radarData.past[radarFrameIdx] || radarData.past[radarData.past.length - 1];
-      if (frame) {
-        const tileUrl = `${radarData.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
-        const precipTile = L.tileLayer(tileUrl, {
-          attribution: '&copy; RainViewer Global Doppler Radar',
-          opacity: radarOpacity,
-          maxZoom: 18,
-          pane: 'weatherPane',
-        });
-        precipTile.addTo(precipGroup);
-      }
-    } else if (radarMode === 'disaster') {
-      // High-resolution convective cloudburst storm cell centered on scenario epicenter
-      const [epiLat, epiLng] = scenario.epicenter;
-
-      // Outer convective rain band (35 dBZ - green)
-      const outerBand = L.circle([epiLat, epiLng], {
-        radius: 14000,
-        color: '#22c55e',
-        weight: 1.5,
-        fillColor: '#16a34a',
-        fillOpacity: radarOpacity * 0.35,
-        dashArray: '3, 4',
-      });
-      outerBand.bindTooltip('🌧️ Convective Outer Rain Band: 35 dBZ (Moderate precipitation, 15-25 mm/h)', { sticky: true });
-      outerBand.addTo(precipGroup);
-
-      // Moderate convective band (45 dBZ - yellow)
-      const modBand = L.circle([epiLat, epiLng], {
-        radius: 9500,
-        color: '#eab308',
-        weight: 2,
-        fillColor: '#ca8a04',
-        fillOpacity: radarOpacity * 0.5,
-      });
-      modBand.bindTooltip('⛈️ Heavy Inflow Rain Band: 45 dBZ (Torrential rain, 35-50 mm/h)', { sticky: true });
-      modBand.addTo(precipGroup);
-
-      // Severe Cloudburst Core (58 dBZ - intense orange/red)
-      const severeBand = L.circle([epiLat, epiLng], {
-        radius: 5500,
-        color: '#f43f5e',
-        weight: 2.5,
-        fillColor: '#e11d48',
-        fillOpacity: radarOpacity * 0.7,
-        className: 'animate-pulse',
-      });
-      severeBand.bindTooltip('⚠️ Severe Precipitation Cell: 58 dBZ (Extreme downpour, 55-75 mm/h)', { sticky: true });
-      severeBand.addTo(precipGroup);
-
-      // Extreme Hail / Cloudburst Epicenter Core (65+ dBZ magenta)
-      const coreCell = L.circle([epiLat, epiLng], {
-        radius: 2800,
-        color: '#d946ef',
-        weight: 3,
-        fillColor: '#c026d3',
-        fillOpacity: Math.min(1.0, radarOpacity * 0.85),
-      });
-      coreCell.bindTooltip(
-        `<div class="p-1 font-sans">
-          <div class="font-bold text-fuchsia-300 text-xs">⚡ CLOUDBURST CONVECTIVE CORE</div>
-          <div class="text-[11px] text-white font-mono mt-0.5">Reflectivity: <strong>66.5 dBZ</strong></div>
-          <div class="text-[10px] text-slate-300">Peak Rate: <strong>${(scenario.rainfall24hMm / 6).toFixed(0)} mm/hr</strong></div>
-          <div class="text-[10px] text-slate-400 mt-1">Epicenter: ${scenario.riverBasin}</div>
-        </div>`,
-        { sticky: true }
-      );
-      coreCell.addTo(precipGroup);
-
-      // Secondary storm cells along river basin
-      const feeder1 = L.circle([epiLat + 0.035, epiLng - 0.04], {
-        radius: 4000,
-        color: '#f97316',
-        weight: 2,
-        fillColor: '#ea580c',
-        fillOpacity: radarOpacity * 0.55,
-      });
-      feeder1.bindTooltip('🌧️ Feeder Cell Alpha: 52 dBZ (High Inundation Risk)', { sticky: true });
-      feeder1.addTo(precipGroup);
-
-      const feeder2 = L.circle([epiLat - 0.03, epiLng + 0.035], {
-        radius: 3500,
-        color: '#f97316',
-        weight: 2,
-        fillColor: '#ea580c',
-        fillOpacity: radarOpacity * 0.55,
-      });
-      feeder2.bindTooltip('🌧️ Feeder Cell Bravo: 48 dBZ (Upstream Catchment Influx)', { sticky: true });
-      feeder2.addTo(precipGroup);
-    }
-  }, [
-    layerVisibility.weatherPrecipitation,
-    radarMode,
-    radarData,
-    radarFrameIdx,
-    radarOpacity,
-    scenario,
-  ]);
-
-  // 6D. Fetch Meteorological Wind Telemetry
-  useEffect(() => {
-    let isMounted = true;
-    if (!layerVisibility.weatherWind) return;
-
-    const [lat, lon] = scenario.center;
-    fetchWeatherWindApi(scenario.id, lat, lon)
-      .then((data) => {
-        if (!isMounted) return;
-        setWindData(data);
-      })
-      .catch((err) => {
-        console.warn('Wind fetch notice:', err);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [layerVisibility.weatherWind, scenario.id, scenario.center]);
-
-  // 6E. Render Tactical Wind Vector Grid
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const group = weatherWindLayerGroupRef.current;
-    group.clearLayers();
-
-    if (!layerVisibility.weatherWind || !windData) return;
-    if (windMode !== 'vectors' && windMode !== 'both') return;
-
-    const [[s, w], [n, e]] = scenario.bounds;
-    const latSpan = n - s;
-    const lngSpan = e - w;
-
-    // 4x4 Grid of tactical wind arrow markers across disaster AOI
-    const rows = 4;
-    const cols = 4;
-    const speed = windData.windSpeedKmh;
-    const baseDir = windData.windDirectionDeg;
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const lat = s + (latSpan * (r + 0.5)) / rows;
-        const lng = w + (lngSpan * (c + 0.5)) / cols;
-
-        // Slight micro-variation based on topography
-        const seed = (r * 11 + c * 17) % 10;
-        const localDir = (baseDir + (seed - 5) * 1.5 + 360) % 360;
-        const localSpeed = Math.max(5, speed + (seed - 5) * 1.2);
-
-        // Color based on velocity
-        const strokeColor =
-          localSpeed >= 65 ? '#f43f5e' : localSpeed >= 40 ? '#fbbf24' : localSpeed >= 20 ? '#34d399' : '#38bdf8';
-        const bgColor =
-          localSpeed >= 65 ? 'rgba(244, 63, 94, 0.25)' : localSpeed >= 40 ? 'rgba(251, 191, 36, 0.25)' : 'rgba(56, 189, 248, 0.25)';
-
-        // Arrow marker with rotation
-        const arrowIcon = L.divIcon({
-          className: 'tactical-wind-marker',
-          html: `
-            <div style="display: flex; flex-direction: column; align-items: center; pointer-events: auto; cursor: pointer;">
-              <div style="width: 28px; height: 28px; border-radius: 50%; background: ${bgColor}; border: 1.5px solid ${strokeColor}; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px ${strokeColor}66;">
-                <div style="transform: rotate(${localDir}deg); display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                  <div style="width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 12px solid ${strokeColor};"></div>
-                  <div style="width: 2px; height: 6px; background: ${strokeColor};"></div>
-                </div>
-              </div>
-              <div style="margin-top: 2px; background: rgba(2, 6, 23, 0.9); border: 1px solid ${strokeColor}88; color: #f8fafc; font-size: 9px; font-family: monospace; font-weight: bold; padding: 1px 4px; border-radius: 4px; white-space: nowrap;">
-                ${localSpeed.toFixed(0)} km/h
-              </div>
-            </div>
-          `,
-          iconSize: [40, 48],
-          iconAnchor: [20, 24],
-        });
-
-        const marker = L.marker([lat, lng], { icon: arrowIcon, zIndexOffset: 200 });
-
-        marker.bindPopup(`
-          <div style="min-width: 190px; font-family: inherit; color: #f8fafc; font-size: 11px;">
-            <div style="color: ${strokeColor}; font-weight: bold; text-transform: uppercase; font-size: 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-              <span>💨 Wind Telemetry Node (${r+1},${c+1})</span>
-            </div>
-            <div><strong>Velocity:</strong> <span style="color:#ffffff; font-weight: bold;">${localSpeed.toFixed(1)} km/h</span> (${(localSpeed / 1.852).toFixed(1)} kt)</div>
-            <div><strong>Heading:</strong> ${localDir.toFixed(0)}° (True Direction)</div>
-            <div><strong>Peak Gusts:</strong> <span style="color:#fbbf24;">${(localSpeed * 1.38).toFixed(1)} km/h</span></div>
-            <div><strong>Beaufort Scale:</strong> Force ${windData.beaufortScale} (${windData.beaufortDescription})</div>
-            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 10px;">
-              Calibrated meteorological flow across ${scenario.riverBasin}.
-            </div>
-          </div>
-        `);
-
-        marker.addTo(group);
-      }
-    }
-  }, [layerVisibility.weatherWind, windData, windMode, scenario]);
-
-  // 6F. Animated Wind Particle Streamline Canvas Layer
-  useEffect(() => {
-    const canvas = windCanvasRef.current;
-    if (!canvas || !layerVisibility.weatherWind || !windData) {
-      if (windAnimIdRef.current) {
-        cancelAnimationFrame(windAnimIdRef.current);
-        windAnimIdRef.current = null;
-      }
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-      return;
-    }
-
-    if (windMode !== 'streamlines' && windMode !== 'both') {
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (windAnimIdRef.current) {
-        cancelAnimationFrame(windAnimIdRef.current);
-        windAnimIdRef.current = null;
-      }
-      return;
-    }
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Resize canvas to match container
-    const resizeCanvas = () => {
-      if (!canvas) return;
-      canvas.width = canvas.offsetWidth || window.innerWidth;
-      canvas.height = canvas.offsetHeight || window.innerHeight;
-    };
-    resizeCanvas();
-
-    const speedKmh = windData.windSpeedKmh;
-    const dirDeg = windData.windDirectionDeg;
-
-    // Velocity vector (wind blowing towards dirDeg + 180)
-    const rad = ((dirDeg + 180) % 360) * (Math.PI / 180);
-    const speedFactor = Math.max(1.2, Math.min(6.5, speedKmh / 14));
-    const vx = Math.sin(rad) * speedFactor;
-    const vy = -Math.cos(rad) * speedFactor;
-
-    const strokeColor =
-      speedKmh >= 65
-        ? 'rgba(244, 63, 94, 0.75)'
-        : speedKmh >= 40
-        ? 'rgba(251, 191, 36, 0.75)'
-        : speedKmh >= 20
-        ? 'rgba(52, 211, 153, 0.75)'
-        : 'rgba(56, 189, 248, 0.75)';
-
-    // Initialize streamline particles
-    const particleCount = 180;
-    interface WindParticle {
-      x: number;
-      y: number;
-      oldX: number;
-      oldY: number;
-      age: number;
-      maxAge: number;
-      speedVar: number;
-    }
-
-    const particles: WindParticle[] = [];
-    for (let i = 0; i < particleCount; i++) {
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      particles.push({
-        x,
-        y,
-        oldX: x,
-        oldY: y,
-        age: Math.floor(Math.random() * 80),
-        maxAge: 40 + Math.floor(Math.random() * 70),
-        speedVar: 0.75 + Math.random() * 0.5,
-      });
-    }
-
-    let isRunning = true;
-
-    const render = () => {
-      if (!isRunning) return;
-
-      // Soft fade trail
-      ctx.fillStyle = 'rgba(2, 6, 23, 0.08)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.lineWidth = 1.6;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = strokeColor;
-
-      ctx.beginPath();
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.oldX = p.x;
-        p.oldY = p.y;
-
-        p.x += vx * p.speedVar;
-        p.y += vy * p.speedVar;
-        p.age++;
-
-        ctx.moveTo(p.oldX, p.oldY);
-        ctx.lineTo(p.x, p.y);
-
-        if (
-          p.age >= p.maxAge ||
-          p.x < -20 ||
-          p.x > canvas.width + 20 ||
-          p.y < -20 ||
-          p.y > canvas.height + 20
-        ) {
-          p.x = Math.random() * canvas.width;
-          p.y = Math.random() * canvas.height;
-          p.oldX = p.x;
-          p.oldY = p.y;
-          p.age = 0;
-          p.maxAge = 40 + Math.floor(Math.random() * 70);
+    if (layerVisibility.weatherPrecipitation) {
+      const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY || 'demo'; console.log("OWM KEY:", apiKey);
+      const precipTile = L.tileLayer(
+        `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+        {
+          attribution: '&copy; OpenWeatherMap',
+          opacity: 1.0,
+          maxZoom: 19,
+          pane: 'weatherPane'
         }
-      }
-      ctx.stroke();
+      );
+      precipTile.addTo(precipGroup);
+    }
 
-      windAnimIdRef.current = requestAnimationFrame(render);
-    };
-
-    windAnimIdRef.current = requestAnimationFrame(render);
-
-    const handleResize = () => {
-      resizeCanvas();
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      isRunning = false;
-      window.removeEventListener('resize', handleResize);
-      if (windAnimIdRef.current) {
-        cancelAnimationFrame(windAnimIdRef.current);
-        windAnimIdRef.current = null;
-      }
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    };
-  }, [layerVisibility.weatherWind, windData, windMode]);
+    // Wind Layer
+    const windGroup = weatherWindLayerGroupRef.current;
+    windGroup.clearLayers();
+    if (layerVisibility.weatherWind) {
+      const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY || 'demo'; console.log("OWM KEY:", apiKey);
+      const windTile = L.tileLayer(
+        `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${apiKey}`,
+        {
+          attribution: '&copy; OpenWeatherMap',
+          opacity: 0.8,
+          maxZoom: 19,
+          pane: 'weatherPane'
+        }
+      );
+      windTile.addTo(windGroup);
+    }
+  }, [layerVisibility.weatherPrecipitation, layerVisibility.weatherWind]);
 
   // 7. Render Copernicus Data Space Ecosystem (CDSE) Live Satellite Swaths & Acquisition Footprints
   useEffect(() => {
-    let isMounted = true;
     if (!mapRef.current) return;
     const group = copernicusSentinelGroupRef.current;
     group.clearLayers();
@@ -1018,12 +623,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     fetch(`/api/copernicus/search?scenario=${scenario.id}&collection=SENTINEL-1`)
       .then((res) => res.json())
       .then((json) => {
-        if (!isMounted || !mapRef.current) return;
         if (!json.success || !json.data || !json.data.value) return;
         const products = json.data.value;
 
         products.forEach((prod: any, idx: number) => {
-          if (!isMounted || !mapRef.current) return;
           let coordinates: [number, number][] = [];
 
           // 1. Try GeoFootprint GeoJSON if provided by OData
@@ -1095,12 +698,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             });
           });
 
-          if (isMounted && mapRef.current) {
-            swathPolygon.addTo(group);
-          }
+          swathPolygon.addTo(group);
 
           // Render SAR Center Node / Satellite pass marker for the primary swath
-          if (isLatest && isMounted && mapRef.current) {
+          if (isLatest) {
             const bounds = swathPolygon.getBounds();
             const center = bounds.getCenter();
 
@@ -1127,36 +728,20 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 data: prod,
               });
             });
-            if (isMounted && mapRef.current) {
-              satMarker.addTo(group);
-            }
+            satMarker.addTo(group);
           }
         });
       })
       .catch((err) => {
-        if (!isMounted) return;
         console.warn('[Copernicus Map Layer] Failed to fetch swath footprints:', err);
       });
-
-    return () => {
-      isMounted = false;
-      group.clearLayers();
-    };
   }, [scenario.id, layerVisibility.copernicusSentinel, onSelectFeature]);
 
   // Fit bounds when scenario changes
   useEffect(() => {
     if (!mapRef.current) return;
-    if (scenario.bounds && scenario.bounds.length === 2) {
-      mapRef.current.flyToBounds(scenario.bounds as L.LatLngBoundsExpression, {
-        duration: 1.2,
-        padding: [30, 30],
-        maxZoom: 14,
-      });
-    } else if (scenario.center) {
-      mapRef.current.flyTo(scenario.center, scenario.zoom || 12, { duration: 1.2 });
-    }
-  }, [scenario.id, scenario.bounds, scenario.center]);
+    mapRef.current.flyToBounds(scenario.bounds, { duration: 1.2 });
+  }, [scenario.id]);
 
   // Map Controls Helpers
   const handleZoomIn = () => mapRef.current?.zoomIn();
@@ -1188,12 +773,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     <div className="relative w-full h-full overflow-hidden bg-slate-950 select-none">
       {/* Actual Map Canvas */}
       <div ref={mapElementRef} className="w-full h-full z-0" />
-
-      {/* Dynamic Animated Wind Particle Streamline Canvas */}
-      <canvas
-        ref={windCanvasRef}
-        className="pointer-events-none absolute inset-0 z-10 w-full h-full"
-      />
 
       {/* TOP FLOATING BAR: Focus Modes & Quick Clarity Filter */}
       <div className="absolute top-3 left-4 z-20 flex flex-wrap items-center gap-1 bg-slate-950/40 hover:bg-slate-950/75 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-slate-700/40 hover:border-slate-600/70 shadow-lg transition-all duration-200">
@@ -1806,16 +1385,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             </div>
           )}
         </div>
-      )}
-
-      {/* Weather Tactical Wind Telemetry HUD */}
-      {layerVisibility.weatherWind && (
-        <WeatherWindHud
-          windData={windData}
-          windMode={windMode}
-          onChangeWindMode={setWindMode}
-          onClose={() => onUpdateLayerVisibility?.({ weatherWind: false })}
-        />
       )}
     </div>
   );

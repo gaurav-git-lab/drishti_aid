@@ -237,36 +237,6 @@ export type SelectedFeature =
   | { type: 'copernicus'; data: any }
   | null;
 
-export interface RadarFrame {
-  time: number;
-  path: string;
-}
-
-export interface RadarDataResponse {
-  success: boolean;
-  host: string;
-  generated: number;
-  past: RadarFrame[];
-  nowcast: RadarFrame[];
-  latestTileUrl: string;
-}
-
-export interface WindDataResponse {
-  success: boolean;
-  latitude: number;
-  longitude: number;
-  scenarioId: string;
-  windSpeedKmh: number;
-  windDirectionDeg: number;
-  windGustsKmh: number;
-  temperatureC: number;
-  pressureHpa: number;
-  beaufortScale: number;
-  beaufortDescription: string;
-  source: 'live_open_meteo' | 'scenario_calibrated';
-  updatedAt: string;
-}
-
 export interface GeeStatusResponse {
   isConfigured: boolean;
   projectId: string | null;

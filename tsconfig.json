@@ -9,7 +9,7 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "types": ["vite/client", "node", "google.maps"],
+    "types": ["vite/client", "node"],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,

@@ -1,14 +1,13 @@
 import express from 'express';
 import { Readable } from 'stream';
-import { SCENARIOS, getScenario } from './geoData.ts';
-import { runSarChangeDetection } from './changeDetection.ts';
-import { computeRiskZones } from './riskScoring.ts';
-import { computeSafeRoutes } from './routingEngine.ts';
-import { generateTacticalBriefing } from './geminiService.ts';
-import { getGeeStatus, getEarthEngineDisasterComparison, generateEarthEngineScript, getGoogleOAuthToken } from './geeService.ts';
-import { getNasaEarthdataStatus, getNasaGpmGranules } from './nasaEarthdataService.ts';
-import { getCopernicusStatus, searchSentinelData, getQuicklookImageStream } from './copernicusService.ts';
-import { getRainViewerRadar, getMeteorologicalWind } from './weatherService.ts';
+import { SCENARIOS } from './geoData';
+import { runSarChangeDetection } from './changeDetection';
+import { computeRiskZones } from './riskScoring';
+import { computeSafeRoutes } from './routingEngine';
+import { generateTacticalBriefing } from './geminiService';
+import { getGeeStatus, getEarthEngineDisasterComparison, generateEarthEngineScript, getGoogleOAuthToken } from './geeService';
+import { getNasaEarthdataStatus, getNasaGpmGranules } from './nasaEarthdataService';
+import { getCopernicusStatus, searchSentinelData, getQuicklookImageStream } from './copernicusService';
 
 export function createExpressApp() {
   const app = express();
@@ -123,7 +122,7 @@ export function createExpressApp() {
   // 1. GET /api/data - Load baseline imagery, reference layers & shelters
   router.get('/data', (req, res) => {
     const scenarioId = (req.query.scenario as string) || 'mumbai';
-    const scenario = getScenario(scenarioId);
+    const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
 
     res.json({
       success: true,
@@ -181,35 +180,12 @@ export function createExpressApp() {
     }
   });
 
-  // Weather 1: Live RainViewer Doppler Radar Frames & Tiles
-  router.get('/weather/radar', async (req, res) => {
-    try {
-      const radar = await getRainViewerRadar();
-      res.json({ success: true, ...radar });
-    } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // Weather 2: Live Meteorological Wind Vectors & Surface Conditions
-  router.get('/weather/wind', async (req, res) => {
-    try {
-      const scenarioId = (req.query.scenario as string) || 'mumbai';
-      const lat = req.query.lat ? parseFloat(req.query.lat as string) : 19.076;
-      const lon = req.query.lon ? parseFloat(req.query.lon as string) : 72.877;
-      const wind = await getMeteorologicalWind(scenarioId, lat, lon);
-      res.json({ success: true, ...wind });
-    } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
   // 6. GET /api/report or POST /api/report - Generate PDF situational report data
   router.all('/report', async (req, res) => {
     const scenarioId = (req.body?.scenarioId || req.query.scenario || 'mumbai') as string;
     const timelineHour = Number(req.body?.timelineHour || req.query.timelineHour || 4);
 
-    const scenario = getScenario(scenarioId);
+    const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
     const changeDetection = runSarChangeDetection(scenarioId, timelineHour);
     const riskZones = computeRiskZones(scenarioId, timelineHour);
     const routes = computeSafeRoutes(scenarioId, timelineHour);

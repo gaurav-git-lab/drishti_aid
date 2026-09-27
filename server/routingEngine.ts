@@ -3,8 +3,8 @@
  * A* Pathfinding over Road Network Graph with Dynamic Flood Impedance
  */
 
-import { SCENARIOS, getScenario, type ShelterPoint, type RoadNode, type RoadEdge } from './geoData.ts';
-import { runSarChangeDetection, type FloodPolygonFeature } from './changeDetection.ts';
+import { SCENARIOS, ShelterPoint, RoadNode, RoadEdge } from './geoData';
+import { runSarChangeDetection, FloodPolygonFeature } from './changeDetection';
 
 export interface RouteStep {
   instruction: string;
@@ -109,7 +109,7 @@ export function computeSafeRoutes(
   customOrigin?: [number, number]
 ): RoutePlanningResult {
   const startTime = Date.now();
-  const scenario = getScenario(scenarioId);
+  const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
   const changeDetection = runSarChangeDetection(scenarioId, timelineHour);
   const floodFeatures = changeDetection.geoJson.features;
 

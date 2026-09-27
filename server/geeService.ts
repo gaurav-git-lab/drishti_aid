@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { SCENARIOS, getScenario } from './geoData.ts';
+import { SCENARIOS } from './geoData';
 
 export interface GeeStatus {
   isConfigured: boolean;
@@ -203,7 +203,7 @@ export function getGeeStatus(): GeeStatus {
 
 // Generate Earth Engine Code Editor script for this exact disaster scene
 export function generateEarthEngineScript(scenarioId: string): { javascript: string; python: string } {
-  const s = getScenario(scenarioId);
+  const s = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
   const [minLat, minLng] = s.bounds[0];
   const [maxLat, maxLng] = s.bounds[1];
 
@@ -279,7 +279,7 @@ print("Flood pixel count:", flooded.reduceRegion(ee.Reducer.sum(), aoi, 30).getI
 
 // Return pre vs post disaster satellite datasets
 export function getEarthEngineDisasterComparison(scenarioId: string): DisasterComparisonData {
-  const s = getScenario(scenarioId);
+  const s = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
 
   if (s.id === 'mumbai') {
     return {

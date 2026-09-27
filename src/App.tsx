@@ -30,22 +30,9 @@ import { CopernicusDataModal } from './components/CopernicusDataModal';
 import { CartoMapModal } from './components/CartoMapModal';
 import { CartoMainView } from './components/CartoMainView';
 import { CopernicusMainView } from './components/CopernicusMainView';
-import { DetailedGoogleMapView } from './components/DetailedGoogleMapView';
 import { PitchDeckModal } from './components/PitchDeckModal';
-import { LandingPage } from './components/LandingPage';
 
 export default function App() {
-  // Landing page state
-  const [showLandingPage, setShowLandingPage] = useState<boolean>(true);
-
-  // Google Maps Platform Quota Alert State
-  const [quotaExceeded, setQuotaExceeded] = useState<boolean>(false);
-  useEffect(() => {
-    const handler = () => setQuotaExceeded(true);
-    window.addEventListener('gmp-quota-exceeded', handler);
-    return () => window.removeEventListener('gmp-quota-exceeded', handler);
-  }, []);
-
   // Scenario state
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('mumbai');
   const [scenario, setScenario] = useState<DisasterScenario | null>(null);
@@ -96,8 +83,8 @@ export default function App() {
   const [isCopernicusOpen, setIsCopernicusOpen] = useState<boolean>(false);
   const [isCartoOpen, setIsCartoOpen] = useState<boolean>(false);
   const [isPitchDeckOpen, setIsPitchDeckOpen] = useState<boolean>(false);
-  // Main window map engine: 'detailed' (default Google Maps platform view) or 'copernicus'
-  const [activeMapMode, setActiveMapMode] = useState<'detailed' | 'copernicus'>('detailed');
+  // Main window map engine: 'carto' (default), 'copernicus', or 'tactical'
+  const [activeMapMode, setActiveMapMode] = useState<'carto' | 'tactical' | 'copernicus'>('carto');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [isMetricsExpanded, setIsMetricsExpanded] = useState<boolean>(false);
@@ -115,28 +102,16 @@ export default function App() {
       setRiskZones(null);
       setRoutesResult(null);
       setAiBriefing(null);
-      setIsPostEventSimulated(true);
+      setIsPostEventSimulated(false);
       setSelectedFeature(null);
       setTimelineHour(4);
       setPipelineProgress({
         stage: 'idle',
         progressPercent: 0,
         elapsedMs: 0,
-        currentStepMessage: `Loaded ${data.scenario.name}`,
+        currentStepMessage: 'System idle',
         benchmarks: {},
       });
-
-      // Auto-compute SAR change detection and risk zones for this city
-      try {
-        const cd = await runChangeDetectionApi(scenarioId, 4);
-        setChangeDetection(cd);
-        const rz = await computeRiskZonesApi(scenarioId, 4);
-        setRiskZones(rz);
-        const rt = await planSafeRoutesApi(scenarioId, 4);
-        setRoutesResult(rt);
-      } catch (pipeErr) {
-        console.warn('Auto SAR computation warning:', pipeErr);
-      }
     } catch (err) {
       console.error('Failed to load scenario:', err);
     } finally {
@@ -151,7 +126,6 @@ export default function App() {
   // Handle Scenario Picker change
   const handleScenarioChange = (newScenarioId: string) => {
     setSelectedScenarioId(newScenarioId);
-    setActiveMapMode('tactical');
   };
 
   // 2. Simulate Post-Event SAR Ingestion
@@ -303,21 +277,6 @@ export default function App() {
     }));
   };
 
-  if (showLandingPage) {
-    return (
-      <LandingPage
-        currentScenarioId={selectedScenarioId}
-        onEnterApp={(scenarioId) => {
-          if (scenarioId) {
-            handleScenarioChange(scenarioId);
-          }
-          setActiveMapMode('tactical');
-          setShowLandingPage(false);
-        }}
-      />
-    );
-  }
-
   if (!scenario) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 p-4">
@@ -332,24 +291,6 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
-      {/* Google Maps Platform In-App Quota Defense Banner */}
-      {quotaExceeded && (
-        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm">
-          <span>
-            Google Maps Platform quota reached. If you are the app owner, visit{' '}
-            <a
-              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline font-semibold text-amber-950 hover:text-amber-800"
-            >
-              maps developer site
-            </a>{' '}
-            for instructions to update your account.
-          </span>
-        </div>
-      )}
-
       {/* 1. Command Header */}
       <Header
         currentScenario={scenario}
@@ -363,7 +304,6 @@ export default function App() {
         onOpenCopernicus={() => setIsCopernicusOpen(true)}
         onOpenCarto={() => setIsCartoOpen(true)}
         onOpenPitchDeck={() => setIsPitchDeckOpen(true)}
-        onReturnToLanding={() => setShowLandingPage(true)}
         activeMapMode={activeMapMode}
         onSelectMapMode={setActiveMapMode}
         pipelineProgress={pipelineProgress}
@@ -396,23 +336,36 @@ export default function App() {
 
       {/* 4. Main GIS Canvas & Floating Temporal Controller */}
       <div className="flex-1 relative overflow-hidden">
-        {activeMapMode === 'copernicus' ? (
+        {activeMapMode === 'carto' ? (
+          <CartoMainView
+            scenario={scenario}
+            mapUrl="https://thunbergii.app.carto.com/map/a7e2b3ad-4505-4663-8404-2d7ee51f9c6c"
+            onOpenTacticalGis={() => setActiveMapMode('tactical')}
+            onOpenCopernicus={() => setIsCopernicusOpen(true)}
+            onOpenCopernicusView={() => setActiveMapMode('copernicus')}
+          />
+        ) : activeMapMode === 'copernicus' ? (
           <CopernicusMainView
             scenario={scenario}
-            onOpenDetailedView={() => setActiveMapMode('detailed')}
+            onOpenTacticalGis={() => setActiveMapMode('tactical')}
+            onOpenCarto={() => setActiveMapMode('carto')}
             onOpenModal={() => setIsCopernicusOpen(true)}
           />
         ) : (
           <>
-            <DetailedGoogleMapView
+            <MapContainer
               scenario={scenario}
+              changeDetection={changeDetection}
               riskZones={riskZones}
               routesResult={routesResult}
               layerVisibility={layerVisibility}
-              onToggleLayer={handleToggleLayer}
-              onUpdateLayerVisibility={(updates) =>
-                setLayerVisibility((prev) => ({ ...prev, ...updates }))
-              }
+              onSelectFeature={setSelectedFeature}
+              selectedFeature={selectedFeature}
+              isPostEventSimulated={isPostEventSimulated}
+              timelineHour={timelineHour}
+              onUpdateLayerVisibility={(updated) => {
+                setLayerVisibility((prev) => ({ ...prev, ...updated }));
+              }}
               onOpenCopernicusView={() => setActiveMapMode('copernicus')}
             />
 

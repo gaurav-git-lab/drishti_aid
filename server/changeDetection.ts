@@ -4,7 +4,7 @@
  * Water displays specular reflection -> drastic backscatter drop (typically < -15 dB or pre/post ratio < 0.45)
  */
 
-import { SCENARIOS, getScenario } from './geoData.ts';
+import { SCENARIOS } from './geoData';
 
 export interface FloodPolygonFeature {
   type: 'Feature';
@@ -50,7 +50,7 @@ export function runSarChangeDetection(
   thresholdDb: number = -14.2
 ): ChangeDetectionResult {
   const startTime = Date.now();
-  const scenario = getScenario(scenarioId);
+  const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
   const [epicenterLat, epicenterLng] = scenario.epicenter;
 
   // Growth scale depending on timeline hour (0 = none, 2 = rising, 6 = peak, 12 = receding)
@@ -261,92 +261,6 @@ export function runSarChangeDetection(
             [76.353 + rad1 * 1.6, 10.105 - rad1 * 0.4],
             [76.353 + rad1 * 0.6, 10.105 - rad1 * 1.2],
             [76.353 - rad1 * 1.5, 10.105 - rad1 * 0.5],
-          ],
-        ],
-      },
-    });
-  }
-
-  // Dynamic flood features for any searched city scenario
-  if (features.length === 0) {
-    const rad = 0.025 * timeFactor;
-    features.push({
-      type: 'Feature',
-      properties: {
-        id: `fl_${scenarioId}_1`,
-        zoneName: `${scenario.name} Core Breach Sector`,
-        floodDepthM: +(2.6 * timeFactor).toFixed(2),
-        sarBackscatterDropDb: -18.2,
-        confidenceScore: 0.95,
-        areaKm2: +(26.4 * timeFactor).toFixed(2),
-        waterType: 'river_breach',
-        severity: 'critical',
-      },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [epicenterLng - rad * 1.4, epicenterLat - rad * 0.7],
-            [epicenterLng - rad * 0.5, epicenterLat + rad * 1.2],
-            [epicenterLng + rad * 0.6, epicenterLat + rad * 1.4],
-            [epicenterLng + rad * 1.3, epicenterLat + rad * 0.4],
-            [epicenterLng + rad * 1.0, epicenterLat - rad * 0.7],
-            [epicenterLng - rad * 0.8, epicenterLat - rad * 1.1],
-            [epicenterLng - rad * 1.4, epicenterLat - rad * 0.7],
-          ],
-        ],
-      },
-    });
-
-    const rad2 = 0.019 * timeFactor;
-    features.push({
-      type: 'Feature',
-      properties: {
-        id: `fl_${scenarioId}_2`,
-        zoneName: `${scenario.riverBasin} Lowland Catchment`,
-        floodDepthM: +(1.8 * timeFactor).toFixed(2),
-        sarBackscatterDropDb: -15.8,
-        confidenceScore: 0.91,
-        areaKm2: +(17.2 * timeFactor).toFixed(2),
-        waterType: 'lowland_inundation',
-        severity: 'severe',
-      },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [epicenterLng - rad2 * 1.8, epicenterLat + rad2 * 0.4],
-            [epicenterLng - rad2 * 0.9, epicenterLat + rad2 * 1.6],
-            [epicenterLng + rad2 * 0.2, epicenterLat + rad2 * 1.3],
-            [epicenterLng - rad2 * 0.4, epicenterLat + rad2 * 0.1],
-            [epicenterLng - rad2 * 1.8, epicenterLat + rad2 * 0.4],
-          ],
-        ],
-      },
-    });
-
-    const rad3 = 0.015 * timeFactor;
-    features.push({
-      type: 'Feature',
-      properties: {
-        id: `fl_${scenarioId}_3`,
-        zoneName: `${scenario.name} Urban Waterlogging Basin`,
-        floodDepthM: +(1.2 * timeFactor).toFixed(2),
-        sarBackscatterDropDb: -14.6,
-        confidenceScore: 0.88,
-        areaKm2: +(11.5 * timeFactor).toFixed(2),
-        waterType: 'urban_waterlog',
-        severity: 'moderate',
-      },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [epicenterLng + rad3 * 0.4, epicenterLat - rad3 * 1.8],
-            [epicenterLng + rad3 * 1.5, epicenterLat - rad3 * 0.8],
-            [epicenterLng + rad3 * 1.8, epicenterLat - rad3 * 1.6],
-            [epicenterLng + rad3 * 0.9, epicenterLat - rad3 * 2.2],
-            [epicenterLng + rad3 * 0.4, epicenterLat - rad3 * 1.8],
           ],
         ],
       },
