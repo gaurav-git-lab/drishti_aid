@@ -636,13 +636,10 @@ export const DetailedGoogleMapView: React.FC<DetailedGoogleMapViewProps> = ({
       <div className="absolute top-3 left-3 right-3 z-30 pointer-events-none flex items-center justify-between gap-2 flex-wrap">
         {/* Left: Location details, Map Types, Traffic, Radar, Wind, Shelter filter */}
         <div className="pointer-events-auto flex items-center gap-1.5 flex-wrap bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/80 shadow-2xl">
-          {/* City & Basin badge */}
+          {/* City badge */}
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
             <MapPin className="w-3.5 h-3.5 text-emerald-400" />
             <span className="font-bold text-xs">{scenario.name}</span>
-            <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-              ({scenario.riverBasin})
-            </span>
           </div>
 
           {/* Map Type Buttons */}
@@ -683,40 +680,6 @@ export const DetailedGoogleMapView: React.FC<DetailedGoogleMapViewProps> = ({
             <span className="hidden sm:inline">Traffic</span>
           </button>
 
-          {/* Rain Radar Toggle */}
-          <button
-            onClick={handleTogglePrecipitation}
-            className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg border transition ${
-              isRainRadarActive
-                ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400 font-bold shadow-sm shadow-cyan-500/20'
-                : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
-            }`}
-            title="Toggle Live Precipitation Doppler Radar"
-          >
-            <CloudRain className={`w-3.5 h-3.5 ${isRainRadarActive ? 'text-cyan-300 animate-pulse' : 'text-slate-400'}`} />
-            <span>Rain Radar</span>
-            {isRainRadarActive && (
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping hidden sm:inline-block" />
-            )}
-          </button>
-
-          {/* Wind Telemetry Toggle */}
-          <button
-            onClick={handleToggleWind}
-            className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-lg border transition ${
-              isWindActive
-                ? 'bg-purple-500/25 text-purple-200 border-purple-400 font-bold shadow-sm shadow-purple-500/20'
-                : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
-            }`}
-            title="Toggle Tactical Wind Streamlines & Vectors"
-          >
-            <Wind className={`w-3.5 h-3.5 ${isWindActive ? 'text-purple-300 animate-pulse' : 'text-slate-400'}`} />
-            <span>Wind</span>
-            {isWindActive && (
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping hidden sm:inline-block" />
-            )}
-          </button>
-
           {/* Shelter Filter Buttons */}
           <div className="hidden xl:flex items-center gap-1 pl-1 border-l border-slate-800 text-[11px]">
             <button
@@ -740,24 +703,8 @@ export const DetailedGoogleMapView: React.FC<DetailedGoogleMapViewProps> = ({
           </div>
         </div>
 
-        {/* Right: API Key Config, Zoom Level & Fullscreen */}
+        {/* Right: Zoom Level & Fullscreen */}
         <div className="pointer-events-auto flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/80 shadow-2xl">
-          {/* Key status button */}
-          <button
-            onClick={() => setShowKeyModal(true)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border transition ${
-              activeKey
-                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/80'
-                : 'bg-amber-950/90 text-amber-300 border-amber-500/60 hover:bg-amber-900 animate-pulse'
-            }`}
-            title={activeKey ? 'Google Maps API Key Active (Click to update)' : 'Click to configure VITE_GOOGLE_MAPS_API_KEY'}
-          >
-            <Key className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">
-              {activeKey ? 'Maps Key Active' : 'Configure Maps Key'}
-            </span>
-          </button>
-
           {/* Fullscreen button */}
           <button
             onClick={handleFullscreenToggle}
