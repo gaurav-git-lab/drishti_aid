@@ -1,13 +1,15 @@
 import express from 'express';
 import { Readable } from 'stream';
-import { SCENARIOS } from './geoData';
-import { runSarChangeDetection } from './changeDetection';
-import { computeRiskZones } from './riskScoring';
-import { computeSafeRoutes } from './routingEngine';
-import { generateTacticalBriefing } from './geminiService';
-import { getGeeStatus, getEarthEngineDisasterComparison, generateEarthEngineScript, getGoogleOAuthToken } from './geeService';
-import { getNasaEarthdataStatus, getNasaGpmGranules } from './nasaEarthdataService';
-import { getCopernicusStatus, searchSentinelData, getQuicklookImageStream } from './copernicusService';
+import { SCENARIOS, getScenario } from './geoData.ts';
+import { runSarChangeDetection } from './changeDetection.ts';
+import { computeRiskZones } from './riskScoring.ts';
+import { computeSafeRoutes } from './routingEngine.ts';
+import { generateTacticalBriefing } from './geminiService.ts';
+import { getGeeStatus, getEarthEngineDisasterComparison, generateEarthEngineScript, getGoogleOAuthToken } from './geeService.ts';
+import { getNasaEarthdataStatus, getNasaGpmGranules } from './nasaEarthdataService.ts';
+import { getCopernicusStatus, searchSentinelData, getQuicklookImageStream, fetchSarPasses } from './copernicusService.ts';
+import { getRainViewerRadar, getMeteorologicalWind } from './weatherService.ts';
+import { changeDetectionCache, riskZonesCache, routesCache, pipelineCacheKey } from './cache.ts';
 
 export function createExpressApp() {
   const app = express();
@@ -83,6 +85,18 @@ export function createExpressApp() {
     }
   });
 
+  // Copernicus 4: SAR Pass Pair (baseline + post-SAR) for change detection
+  router.get('/copernicus/sar-passes', async (req, res) => {
+    try {
+      const scenarioId = (req.query.scenario as string) || 'mumbai';
+      const pair = await fetchSarPasses(scenarioId);
+      res.json({ success: true, ...pair });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+
   // GEE 1: Status & Credentials Check with live OAuth2 token verification
   router.get('/gee/status', async (req, res) => {
     try {
@@ -122,7 +136,7 @@ export function createExpressApp() {
   // 1. GET /api/data - Load baseline imagery, reference layers & shelters
   router.get('/data', (req, res) => {
     const scenarioId = (req.query.scenario as string) || 'mumbai';
-    const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
+    const scenario = getScenario(scenarioId);
 
     res.json({
       success: true,
@@ -140,31 +154,41 @@ export function createExpressApp() {
   // 2. POST /api/change-detection - Compare pre/post SAR -> output flood GeoJSON
   router.post('/change-detection', (req, res) => {
     const { scenarioId = 'mumbai', timelineHour = 4, thresholdDb = -14.2 } = req.body || {};
-    const result = runSarChangeDetection(scenarioId, Number(timelineHour), Number(thresholdDb));
-    res.json({
-      success: true,
-      ...result,
-    });
+    const cacheKey = pipelineCacheKey(scenarioId, Number(timelineHour));
+    let result = changeDetectionCache.get(cacheKey);
+    if (!result) {
+      result = runSarChangeDetection(scenarioId, Number(timelineHour), Number(thresholdDb));
+      changeDetectionCache.set(cacheKey, result);
+    }
+    res.json({ success: true, ...result });
   });
 
   // 3. POST /api/risk-zones - Overlay flood with population -> risk scores
   router.post('/risk-zones', (req, res) => {
     const { scenarioId = 'mumbai', timelineHour = 4 } = req.body || {};
-    const result = computeRiskZones(scenarioId, Number(timelineHour));
-    res.json({
-      success: true,
-      ...result,
-    });
+    const cacheKey = pipelineCacheKey(scenarioId, Number(timelineHour));
+    let result = riskZonesCache.get(cacheKey);
+    if (!result) {
+      // Reuse cached SAR result if available to skip recomputation
+      const cachedCd = changeDetectionCache.get(cacheKey);
+      result = computeRiskZones(scenarioId, Number(timelineHour), cachedCd);
+      riskZonesCache.set(cacheKey, result);
+    }
+    res.json({ success: true, ...result });
   });
 
   // 4. POST /api/routes - Compute A* safe routes avoiding flooded cells to shelters/hospitals
   router.post('/routes', (req, res) => {
     const { scenarioId = 'mumbai', timelineHour = 4, origin } = req.body || {};
-    const result = computeSafeRoutes(scenarioId, Number(timelineHour), origin);
-    res.json({
-      success: true,
-      ...result,
-    });
+    const cacheKey = pipelineCacheKey(scenarioId, Number(timelineHour));
+    let result = routesCache.get(cacheKey);
+    if (!result) {
+      // Reuse cached SAR result if available to skip recomputation
+      const cachedCd = changeDetectionCache.get(cacheKey);
+      result = computeSafeRoutes(scenarioId, Number(timelineHour), origin, cachedCd);
+      routesCache.set(cacheKey, result);
+    }
+    res.json({ success: true, ...result });
   });
 
   // 5. POST /api/ai-briefing - Gemini tactical situational dispatch advisory
@@ -180,15 +204,41 @@ export function createExpressApp() {
     }
   });
 
+  // Weather 1: Live RainViewer Doppler Radar Frames & Tiles
+  router.get('/weather/radar', async (req, res) => {
+    try {
+      const radar = await getRainViewerRadar();
+      res.json({ success: true, ...radar });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Weather 2: Live Meteorological Wind Vectors & Surface Conditions
+  router.get('/weather/wind', async (req, res) => {
+    try {
+      const scenarioId = (req.query.scenario as string) || 'mumbai';
+      const lat = req.query.lat ? parseFloat(req.query.lat as string) : 19.076;
+      const lon = req.query.lon ? parseFloat(req.query.lon as string) : 72.877;
+      const wind = await getMeteorologicalWind(scenarioId, lat, lon);
+      res.json({ success: true, ...wind });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // 6. GET /api/report or POST /api/report - Generate PDF situational report data
   router.all('/report', async (req, res) => {
     const scenarioId = (req.body?.scenarioId || req.query.scenario || 'mumbai') as string;
     const timelineHour = Number(req.body?.timelineHour || req.query.timelineHour || 4);
 
-    const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
+    const scenario = getScenario(scenarioId);
     const changeDetection = runSarChangeDetection(scenarioId, timelineHour);
-    const riskZones = computeRiskZones(scenarioId, timelineHour);
-    const routes = computeSafeRoutes(scenarioId, timelineHour);
+    // Parallelize independent computations, sharing the already-computed SAR result
+    const [riskZones, routes] = await Promise.all([
+      Promise.resolve(computeRiskZones(scenarioId, timelineHour, changeDetection)),
+      Promise.resolve(computeSafeRoutes(scenarioId, timelineHour, undefined, changeDetection)),
+    ]);
 
     const briefing = await generateTacticalBriefing({
       scenarioName: scenario.name,

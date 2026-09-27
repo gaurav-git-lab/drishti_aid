@@ -43,9 +43,12 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
   const [activeTab, setActiveTab] = useState<'visual' | 'histogram' | 'nasa' | 'script' | 'guide'>('visual');
   const [scriptLanguage, setScriptLanguage] = useState<'javascript' | 'python'>('javascript');
   const [copied, setCopied] = useState(false);
+  const [sarPasses, setSarPasses] = useState<{ baseline: { quicklookUrl: string; acquisitionDate: string; name: string }; postSar: { quicklookUrl: string; acquisitionDate: string; name: string }; source: string } | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
+    setSarPasses(null);
+
     fetch(`/api/gee/comparison?scenario=${scenario.id}`)
       .then((res) => res.json())
       .then((res) => {
@@ -59,6 +62,16 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
         console.error('Failed to load GEE comparison data', err);
         setIsLoading(false);
       });
+
+    // Fetch real Copernicus SAR pass pair (baseline + latest pass)
+    fetch(`/api/copernicus/sar-passes?scenario=${scenario.id}`)
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && res.baseline && res.postSar) {
+          setSarPasses({ baseline: res.baseline, postSar: res.postSar, source: res.source });
+        }
+      })
+      .catch((err) => console.warn('SAR passes fetch error', err));
 
     // Fetch live NASA Earthdata status & GPM precipitation granules
     fetch('/api/nasa/status')
@@ -75,6 +88,7 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
       })
       .catch((err) => console.warn('NASA granules fetch error', err));
   }, [scenario.id]);
+
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -141,6 +155,7 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                 { id: 'mumbai', label: 'Mumbai Deluge (Mithi Basin)' },
                 { id: 'chennai', label: 'Chennai Cyclone Michaung' },
                 { id: 'kerala', label: 'Kerala Great Floods (Periyar)' },
+                { id: 'bihar', label: 'Bihar Kosi-Gandak Breach' },
               ].map((s) => (
                 <button
                   key={s.id}
@@ -303,18 +318,29 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                   {/* Visual Container */}
                   {viewMode === 'slider' ? (
                     <div className="relative h-96 rounded-2xl overflow-hidden border border-slate-800 select-none bg-slate-950">
+                      {/* Source badge */}
+                      {sarPasses && (
+                        <div className="absolute bottom-3 left-3 z-30 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-indigo-950/90 border border-indigo-500/50 backdrop-blur-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                          <span className="text-[10px] font-mono font-bold text-indigo-300">
+                            {sarPasses.source === 'copernicus_live' ? 'LIVE COPERNICUS SAR' : 'COPERNICUS ARCHIVE'}
+                          </span>
+                        </div>
+                      )}
+
                       {/* Pre-Event Image (Underneath) */}
                       <img
-                        src={data.preEvent.previewImageUrl}
+                        src={sarPasses?.baseline.quicklookUrl ?? data.preEvent.previewImageUrl}
                         alt="Pre-Disaster Baseline"
                         className="absolute inset-0 w-full h-full object-cover filter contrast-125"
+                        onError={(e) => { (e.target as HTMLImageElement).src = data.preEvent.previewImageUrl; }}
                       />
                       <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/60 z-10">
                         <span className="text-xs font-bold text-slate-200">
-                          PRE: {data.preEvent.name}
+                          PRE: {sarPasses?.baseline.name ?? data.preEvent.name}
                         </span>
                         <div className="text-[10px] text-slate-400 font-mono">
-                          {data.preEvent.acquisitionDate}
+                          {sarPasses?.baseline.acquisitionDate ?? data.preEvent.acquisitionDate}
                         </div>
                       </div>
 
@@ -324,18 +350,19 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                         style={{ clipPath: `inset(0 0 0 ${sliderPosition}%)` }}
                       >
                         <img
-                          src={data.postEvent.previewImageUrl}
+                          src={sarPasses?.postSar.quicklookUrl ?? data.postEvent.previewImageUrl}
                           alt="Post-Disaster Active Flood"
                           className="absolute inset-0 w-full h-full object-cover filter contrast-125 brightness-95"
+                          onError={(e) => { (e.target as HTMLImageElement).src = data.postEvent.previewImageUrl; }}
                         />
                         {/* Highlighting Inundation with Cyan Tint */}
                         <div className="absolute inset-0 bg-cyan-500/20 mix-blend-color-dodge pointer-events-none" />
                         <div className="absolute top-3 right-3 bg-cyan-950/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-cyan-500/60 z-10 text-right">
                           <span className="text-xs font-bold text-cyan-300">
-                            POST: {data.postEvent.name}
+                            POST: {sarPasses?.postSar.name ?? data.postEvent.name}
                           </span>
                           <div className="text-[10px] text-cyan-400 font-mono">
-                            {data.postEvent.acquisitionDate}
+                            {sarPasses?.postSar.acquisitionDate ?? data.postEvent.acquisitionDate}
                           </div>
                         </div>
                       </div>
@@ -360,6 +387,7 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                         className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-30"
                       />
                     </div>
+
                   ) : (
                     /* Side by Side Mode */
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -371,7 +399,7 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                               Pre-Disaster Baseline
                             </span>
                             <div className="text-[10px] font-mono text-slate-400">
-                              {data.preEvent.acquisitionDate}
+                              {sarPasses?.baseline.acquisitionDate ?? data.preEvent.acquisitionDate}
                             </div>
                           </div>
                           <span className="text-xs font-mono font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
@@ -380,13 +408,14 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                         </div>
                         <div className="relative h-64">
                           <img
-                            src={data.preEvent.previewImageUrl}
+                            src={sarPasses?.baseline.quicklookUrl ?? data.preEvent.previewImageUrl}
                             alt="Pre Event"
                             className="w-full h-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).src = data.preEvent.previewImageUrl; }}
                           />
                         </div>
                         <div className="p-3 text-xs space-y-1 bg-slate-900/60">
-                          <p className="text-slate-300 font-semibold">{data.preEvent.name}</p>
+                          <p className="text-slate-300 font-semibold">{sarPasses?.baseline.name ?? data.preEvent.name}</p>
                           <p className="text-[11px] text-slate-400">{data.preEvent.bandDescription}</p>
                           <p className="text-[10px] text-slate-500 font-mono">
                             Sensor: {data.preEvent.sensor} • {data.preEvent.polarization}
@@ -398,11 +427,18 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                       <div className="bg-slate-950 rounded-2xl border border-cyan-500/40 overflow-hidden shadow-lg shadow-cyan-500/10">
                         <div className="p-3 border-b border-cyan-500/30 bg-cyan-950/30 flex items-center justify-between">
                           <div>
-                            <span className="text-xs font-bold text-cyan-300">
-                              Post-Disaster SAR Pass
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-cyan-300">
+                                Post-Disaster SAR Pass
+                              </span>
+                              {sarPasses && (
+                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-500/40">
+                                  {sarPasses.source === 'copernicus_live' ? 'LIVE' : 'ARCHIVE'}
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[10px] font-mono text-cyan-400">
-                              {data.postEvent.acquisitionDate}
+                              {sarPasses?.postSar.acquisitionDate ?? data.postEvent.acquisitionDate}
                             </div>
                           </div>
                           <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-900/50 px-2 py-0.5 rounded border border-cyan-500/40">
@@ -411,14 +447,15 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                         </div>
                         <div className="relative h-64">
                           <img
-                            src={data.postEvent.previewImageUrl}
+                            src={sarPasses?.postSar.quicklookUrl ?? data.postEvent.previewImageUrl}
                             alt="Post Event"
                             className="w-full h-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).src = data.postEvent.previewImageUrl; }}
                           />
                           <div className="absolute inset-0 bg-cyan-500/20 mix-blend-color-dodge" />
                         </div>
                         <div className="p-3 text-xs space-y-1 bg-cyan-950/20">
-                          <p className="text-cyan-200 font-semibold">{data.postEvent.name}</p>
+                          <p className="text-cyan-200 font-semibold">{sarPasses?.postSar.name ?? data.postEvent.name}</p>
                           <p className="text-[11px] text-cyan-300/80">{data.postEvent.bandDescription}</p>
                           <p className="text-[10px] text-slate-400 font-mono">
                             Sensor: {data.postEvent.sensor} • {data.postEvent.polarization}
@@ -426,6 +463,7 @@ export const EarthEngineComparisonModal: React.FC<EarthEngineComparisonModalProp
                         </div>
                       </div>
                     </div>
+
                   )}
 
                   {/* Satellite Parameters Table */}

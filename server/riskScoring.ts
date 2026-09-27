@@ -9,8 +9,8 @@
  * - Low: < 25 (Green #22c55e) -> Safe buffer zone, staging ground
  */
 
-import { SCENARIOS } from './geoData';
-import { runSarChangeDetection } from './changeDetection';
+import { getScenario } from './geoData.ts';
+import { runSarChangeDetection, type ChangeDetectionResult } from './changeDetection.ts';
 
 export interface RiskZoneFeature {
   type: 'Feature';
@@ -52,11 +52,13 @@ export interface RiskAnalysisResult {
 
 export function computeRiskZones(
   scenarioId: string,
-  timelineHour: number = 4
+  timelineHour: number = 4,
+  precomputedChangeDetection?: ChangeDetectionResult
 ): RiskAnalysisResult {
   const startTime = Date.now();
-  const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
-  const changeDetection = runSarChangeDetection(scenarioId, timelineHour);
+  const scenario = getScenario(scenarioId);
+  // Reuse caller-supplied change detection to avoid re-running SAR computation
+  const changeDetection = precomputedChangeDetection ?? runSarChangeDetection(scenarioId, timelineHour);
   const bounds = scenario.bounds;
   const [south, west] = bounds[0];
   const [north, east] = bounds[1];
@@ -88,12 +90,23 @@ export function computeRiskZones(
       let floodIntensity = 0;
 
       for (const floodFeat of changeDetection.geoJson.features) {
-        const polyCoords = floodFeat.geometry.coordinates[0];
-        // Bounding box approximation for fast spatial overlap
-        const minLng = Math.min(...polyCoords.map((pt) => pt[0]));
-        const maxLng = Math.max(...polyCoords.map((pt) => pt[0]));
-        const minLat = Math.min(...polyCoords.map((pt) => pt[1]));
-        const maxLat = Math.max(...polyCoords.map((pt) => pt[1]));
+        // Use precomputed bounding box from flood feature (added in change detection or computed once here)
+        const bbox = (floodFeat as any)._bbox as { minLng: number; maxLng: number; minLat: number; maxLat: number } | undefined;
+        let minLng: number, maxLng: number, minLat: number, maxLat: number;
+        if (bbox) {
+          ({ minLng, maxLng, minLat, maxLat } = bbox);
+        } else {
+          const polyCoords = floodFeat.geometry.coordinates[0];
+          minLng = Infinity; maxLng = -Infinity; minLat = Infinity; maxLat = -Infinity;
+          for (const pt of polyCoords) {
+            if (pt[0] < minLng) minLng = pt[0];
+            if (pt[0] > maxLng) maxLng = pt[0];
+            if (pt[1] < minLat) minLat = pt[1];
+            if (pt[1] > maxLat) maxLat = pt[1];
+          }
+          // Cache on the object for subsequent grid cells
+          (floodFeat as any)._bbox = { minLng, maxLng, minLat, maxLat };
+        }
 
         if (
           cellCenterLng >= minLng - 0.004 &&

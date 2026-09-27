@@ -1,23 +1,28 @@
-import React, { useRef, useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  Download,
+  ChevronLeft,
+  ChevronRight,
+  X,
   Printer,
-  Sparkles,
-  Radio,
-  Satellite,
-  Layers,
+  Download,
   BrainCircuit,
+  Radio,
   MapPin,
-  ShieldCheck,
+  Route,
+  Home,
   CheckCircle2,
-  TrendingUp,
-  Award,
-  Globe2,
   Database,
   ArrowRight,
-  Zap,
-  Target,
-  FileCheck,
+  Activity,
+  ShieldCheck,
+  TrendingUp,
+  Cpu,
+  Layers,
+  Search,
+  Users,
+  Building2,
+  Globe,
+  Award
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -27,321 +32,607 @@ interface PitchDeckModalProps {
 }
 
 export const PitchDeckModal: React.FC<PitchDeckModalProps> = ({ onClose }) => {
-  const deckRef = useRef<HTMLDivElement | null>(null);
-  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [currentSlide, setCurrentSlide] = useState(1);
+  const totalSlides = 6;
+  const slideRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const nextSlide = () => setCurrentSlide((p) => Math.min(totalSlides, p + 1));
+  const prevSlide = () => setCurrentSlide((p) => Math.max(1, p - 1));
 
   const handleDownloadPdf = async () => {
-    if (!deckRef.current) return;
+    if (!slideRef.current) return;
     setIsExporting(true);
-
     try {
-      const element = deckRef.current;
-      // High-resolution capture specifically tuned for a crisp 1-page A4 landscape or portrait PDF
-      const canvas = await html2canvas(element, {
-        scale: 2.5,
-        backgroundColor: '#030712',
-        useCORS: true,
-        logging: false,
-      });
-
+      const canvas = await html2canvas(slideRef.current, { scale: 2 });
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4', // 297mm x 210mm
-      });
-
-      const pdfWidth = 297;
-      const pdfHeight = 210;
-
-      // Exactly fit onto 1 single PDF page
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-      pdf.save(`DRISHTI-AID-Executive-Pitch-Deck.pdf`);
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
+      pdf.save(`DRISHTI-AID_Slide_${currentSlide}.pdf`);
     } catch (err) {
-      console.error('Failed to generate PDF pitch deck:', err);
-      window.print();
+      console.error(err);
     } finally {
       setIsExporting(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 print:p-0 print:bg-white overflow-y-auto">
-      <div className="bg-slate-950 border border-slate-700/80 rounded-2xl w-full max-w-6xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden text-slate-100 print:border-none print:shadow-none print:max-h-none print:w-full">
-        {/* Modal Top Control Bar */}
-        <div className="p-3 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between print:hidden">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-md shadow-cyan-500/30">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white tracking-wide">
-                  DRISHTI-AID • One-Page Executive Pitch Deck
-                </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold">
-                  A4 Landscape Single Page PDF
-                </span>
+  const SlideHeader = ({ title }: { title: string }) => (
+    <div className="flex items-center justify-between border-b-2 border-slate-200 pb-2 mb-4">
+      <div className="flex items-center justify-center w-20 h-10 border-2 border-indigo-900 rounded-full text-indigo-900 font-bold text-sm bg-white shrink-0">
+        GeoPulse
+      </div>
+      <h1 className="text-3xl font-extrabold text-slate-900 uppercase tracking-wider text-center flex-1 px-4">
+        {title}
+      </h1>
+      <div className="text-right shrink-0">
+        <div className="font-extrabold text-slate-800 text-sm leading-tight">SMART INDIA<br/>HACKATHON</div>
+        <div className="text-indigo-900 font-black text-sm">2026</div>
+      </div>
+    </div>
+  );
+
+  const renderSlide1 = () => (
+    <div className="flex flex-col h-full w-full p-10 bg-slate-50 relative overflow-hidden">
+      <div className="absolute top-0 right-0 p-8 text-right">
+        <div className="font-extrabold text-slate-800 text-xl leading-tight">SMART INDIA<br/>HACKATHON</div>
+        <div className="text-indigo-900 font-black text-xl">2026</div>
+      </div>
+      
+      <div className="text-center mt-8 mb-12">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-indigo-900 mb-8 tracking-wide">
+          SMART INDIA HACKATHON 2026
+        </h1>
+        <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tight">
+          DRISHTI-AID
+        </h2>
+      </div>
+
+      <div className="max-w-3xl mx-auto w-full space-y-6 text-lg md:text-xl text-slate-800 font-medium z-10">
+        <div className="flex gap-4">
+          <span className="font-bold w-64 shrink-0">• Problem Statement ID:</span>
+          <span>SIH26206</span>
+        </div>
+        <div className="flex gap-4">
+          <span className="font-bold w-64 shrink-0">• Problem Statement Title:</span>
+          <span>Student Innovation-Disaster management includes ideas related to risk mitigation, Planning and management before, after or during a disaster.</span>
+        </div>
+        <div className="flex gap-4">
+          <span className="font-bold w-64 shrink-0">• Theme:</span>
+          <span>Disaster Management</span>
+        </div>
+        <div className="flex gap-4">
+          <span className="font-bold w-64 shrink-0">• PS Category:</span>
+          <span>Software</span>
+        </div>
+        <div className="flex gap-4">
+          <span className="font-bold w-64 shrink-0">• Team ID:</span>
+          <span>140770</span>
+        </div>
+        <div className="flex gap-4">
+          <span className="font-bold w-64 shrink-0">• Team Name:</span>
+          <span className="font-bold text-indigo-900">GeoPulse</span>
+        </div>
+      </div>
+      
+      {/* Decorative hexagon/brain background hint */}
+      <div className="absolute right-10 bottom-10 opacity-10">
+        <BrainCircuit className="w-96 h-96" />
+      </div>
+    </div>
+  );
+
+  const renderSlide2 = () => (
+    <div className="flex flex-col h-full p-8 bg-white">
+      <SlideHeader title="DRISHTI-AID" />
+      <div className="text-center text-slate-600 font-semibold mb-4 text-sm uppercase tracking-wide">
+        AI-Powered Satellite Disaster Damage Mapping, Rescue Planning & Flood Management
+      </div>
+      
+      <div className="bg-teal-600 text-white text-center py-2 font-bold tracking-wider mb-6">
+        HOW THE SOLUTION WORKS — ONE INTEGRATED PIPELINE
+      </div>
+
+      <div className="flex items-center justify-between mb-8 px-4">
+        {[
+          { icon: Radio, text: 'Satellite Data', n: 1 },
+          { icon: BrainCircuit, text: 'AI Damage Detection', n: 2 },
+          { icon: Database, text: 'Flood & Risk Assessment', n: 3 },
+          { icon: Activity, text: 'Rescue Priority', n: 4 },
+          { icon: Route, text: 'Safe Route', n: 5 },
+          { icon: Home, text: 'Shelter Recommendation', n: 6 }
+        ].map((step, i) => (
+          <React.Fragment key={step.n}>
+            <div className="flex flex-col items-center w-32 bg-slate-50 p-3 rounded-lg border border-slate-200 text-center relative">
+              <div className="absolute -top-3 -left-3 w-6 h-6 bg-white border border-teal-500 text-teal-600 rounded-full flex items-center justify-center font-bold text-xs">
+                {step.n}
               </div>
-              <p className="text-[11px] text-slate-400">
-                Ready for Investor Pitch, NDRF Command, Hackathon Presentation & Ministry Briefings
-              </p>
+              <step.icon className="w-8 h-8 text-slate-800 mb-2" />
+              <span className="text-[11px] font-bold text-teal-700 leading-tight">{step.text}</span>
+            </div>
+            {i < 5 && <ArrowRight className="w-6 h-6 text-slate-300 shrink-0" />}
+          </React.Fragment>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-6 flex-1">
+        <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center">💡</div>
+            <h3 className="font-bold text-lg text-slate-800">The Idea</h3>
+          </div>
+          <ul className="space-y-3 text-sm text-slate-700">
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>AI compares pre/post-disaster satellite images → detects damage</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Combines flood, elevation, rainfall & population data → risk scoring</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Generates safe rescue routes + shelter/hospital locations</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Displayed on interactive GIS dashboard</span></li>
+          </ul>
+        </div>
+        
+        <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 rounded-full bg-teal-800 text-white flex items-center justify-center"><ShieldCheck className="w-5 h-5"/></div>
+            <h3 className="font-bold text-lg text-slate-800">How It Addresses the Problem</h3>
+          </div>
+          <ul className="space-y-3 text-sm text-slate-700">
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Automates damage detection → faster than manual survey</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Identifies high-risk zones (population + terrain + flood)</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Prioritizes rescue by severity & vulnerability</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Risk-aware routes, not just shortest path</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>AI confidence shown → human verification before action</span></li>
+          </ul>
+        </div>
+
+        <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center"><Radio className="w-5 h-5"/></div>
+            <h3 className="font-bold text-lg text-slate-800">Innovation & Uniqueness</h3>
+          </div>
+          <ul className="space-y-3 text-sm text-slate-700">
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Action-oriented, not just a damage map</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Risk-aware routing (safety &gt; distance)</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Human-in-the-loop + confidence-aware AI</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Scalable to earthquakes, cyclones, fires</span></li>
+            <li className="flex gap-2"><span className="text-slate-400">•</span> <span>Future: drone-fed real-time updates</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSlide3 = () => (
+    <div className="flex flex-col h-full p-8 bg-white">
+      <SlideHeader title="TECHNICAL APPROACH" />
+      
+      <div className="grid grid-cols-12 gap-6 h-full">
+        {/* Left Column */}
+        <div className="col-span-4 flex flex-col gap-4">
+          <div className="bg-slate-800 text-white p-2 text-center font-bold tracking-widest text-sm uppercase">
+            Technologies To Be Used
+          </div>
+          <div className="flex gap-2">
+            <div className="bg-slate-100 p-3 rounded flex-1 text-center border border-slate-200">
+              <div className="bg-slate-800 w-10 h-10 mx-auto rounded-full flex items-center justify-center text-white mb-2 font-mono font-bold">&lt;/&gt;</div>
+              <div className="font-bold text-sm text-slate-800 mb-1">Languages & Backend</div>
+              <div className="text-xs text-slate-600 font-medium">Python · JavaScript/TS · SQL<br/>FastAPI/Flask · React.js<br/>REST APIs</div>
+            </div>
+            <div className="bg-slate-100 p-3 rounded flex-1 text-center border border-slate-200">
+              <div className="bg-slate-800 w-10 h-10 mx-auto rounded-full flex items-center justify-center text-white mb-2"><Cpu className="w-5 h-5"/></div>
+              <div className="font-bold text-sm text-slate-800 mb-1">AI/ML & Vision</div>
+              <div className="text-xs text-slate-600 font-medium">PyTorch · TensorFlow<br/>OpenCV · Scikit-learn<br/>U-Net models</div>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-              title="Print pitch deck"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
-            </button>
-
-            <button
-              id="btn-download-pitch-deck-pdf"
-              onClick={handleDownloadPdf}
-              disabled={isExporting}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-md shadow-cyan-500/30 transition active:scale-95 disabled:opacity-50"
-              title="Download 1-Page Vector High-Res PDF"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isExporting ? 'Generating PDF...' : 'Download 1-Page PDF'}</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition"
-            >
-              ✕
-            </button>
+          
+          <div className="bg-slate-800 text-white p-2 text-center font-bold tracking-widest text-sm uppercase mt-4">
+            Traditional vs. Drishti-AID
+          </div>
+          <div className="border border-rose-200 bg-rose-50 p-3 rounded">
+            <div className="font-bold text-rose-800 mb-2 flex items-center gap-1">❌ Traditional Method</div>
+            <div className="text-xs text-rose-900 font-medium mb-1">✕ Manual visual exams & lab delays</div>
+            <div className="text-xs text-rose-900 font-medium mb-3">✕ Slow, fragmented paper/system logs</div>
+            <div className="bg-rose-200 text-rose-900 text-center font-black py-1.5 rounded">24~48 HOURS</div>
+          </div>
+          <div className="border border-teal-200 bg-teal-50 p-3 rounded">
+            <div className="font-bold text-teal-800 mb-2 flex items-center gap-1">✨ Drishti-AID Approach</div>
+            <div className="text-xs text-teal-900 font-medium mb-1">✓ Sub-second AI computer vision diagnosis</div>
+            <div className="text-xs text-teal-900 font-medium mb-3">✓ Automated real-time digital logging</div>
+            <div className="bg-teal-200 text-teal-900 text-center font-black py-1.5 rounded">UNDER 6 HOUR</div>
           </div>
         </div>
 
-        {/* Scrollable Preview Area with the Print/PDF Deck Container */}
-        <div className="overflow-y-auto p-3 sm:p-5 flex-1 bg-slate-950 flex justify-center items-start print:p-0 print:bg-white">
-          {/* Exact 16:9 / A4 Landscape Aspect Ratio Canvas (297mm x 210mm layout) */}
-          <div
-            ref={deckRef}
-            className="w-full max-w-[1140px] bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 p-6 sm:p-7 shadow-2xl relative overflow-hidden font-sans print:border-none print:rounded-none print:shadow-none print:p-6"
-            style={{ minHeight: '660px' }}
+        {/* Right Column - Flowchart */}
+        <div className="col-span-8 flex flex-col">
+          <div className="bg-slate-800 text-white p-2 text-center font-bold tracking-widest text-sm uppercase mb-6">
+            Methodology & Process of Implementation
+          </div>
+          
+          <div className="flex-1 grid grid-cols-3 gap-y-8 gap-x-6 relative">
+            {/* Row 1 */}
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center z-10">
+              <Database className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-orange-800 text-sm mb-1">Data collection</div>
+              <div className="text-xs text-slate-600">Imagery, weather, DEM, roads, hospitals</div>
+            </div>
+            
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center z-10">
+              <Layers className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-orange-800 text-sm mb-1">Data PreProcessing</div>
+              <div className="text-xs text-slate-600">Align, clean, mask clouds, normalize</div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center z-10">
+              <BrainCircuit className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-indigo-900 text-sm mb-1">AI Damage Detection</div>
+              <div className="text-xs text-slate-600">Change detection, severity, confidence</div>
+            </div>
+
+            {/* Row 2 (Reversed Flow) */}
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 text-center z-10">
+              <Route className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-teal-800 text-sm mb-1">Route Planning</div>
+              <div className="text-xs text-slate-600">A*/Dijkstra avoiding flooded roads</div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center z-10">
+              <Activity className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-indigo-900 text-sm mb-1">Rescue Priority Calc.</div>
+              <div className="text-xs text-slate-600">Critical, high, medium, low zones</div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center z-10">
+              <Layers className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-indigo-900 text-sm mb-1">Flood & Risk Analysis</div>
+              <div className="text-xs text-slate-600">SAR flood extent plus zone risk map</div>
+            </div>
+
+            {/* Row 3 */}
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 text-center z-10">
+              <Home className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-teal-800 text-sm mb-1">Shelter Recommendation</div>
+              <div className="text-xs text-slate-600">Nearest shelters, hospitals, capacity</div>
+            </div>
+
+            <div className="bg-slate-100 border border-slate-300 rounded-lg p-4 text-center z-10">
+              <MapPin className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-teal-800 text-sm mb-1">GIS Command Dashboard</div>
+              <div className="text-xs text-slate-600">Maps, risk zones recommendations</div>
+            </div>
+
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center z-10">
+              <Users className="w-8 h-8 mx-auto mb-2 text-slate-800" />
+              <div className="font-bold text-orange-800 text-sm mb-1">Human Verification</div>
+              <div className="text-xs text-slate-600">Authorities verify, correct, refresh data</div>
+            </div>
+            
+            {/* Visual arrows for flowchart (simplified via css absolute lines) */}
+            {/* Left to right (Row 1) */}
+            <div className="absolute top-[15%] left-[30%] w-[8%] h-1 bg-slate-400"></div>
+            <div className="absolute top-[15%] left-[64%] w-[8%] h-1 bg-slate-400"></div>
+            {/* Down (Col 3) */}
+            <div className="absolute top-[28%] right-[16%] w-1 h-[8%] bg-slate-400"></div>
+            {/* Right to left (Row 2) */}
+            <div className="absolute top-[48%] left-[64%] w-[8%] h-1 bg-slate-400"></div>
+            <div className="absolute top-[48%] left-[30%] w-[8%] h-1 bg-slate-400"></div>
+            {/* Down (Col 1) */}
+            <div className="absolute top-[62%] left-[16%] w-1 h-[8%] bg-slate-400"></div>
+            {/* Left to right (Row 3) */}
+            <div className="absolute bottom-[18%] left-[30%] w-[8%] h-1 bg-slate-400"></div>
+            <div className="absolute bottom-[18%] left-[64%] w-[8%] h-1 bg-slate-400"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSlide4 = () => (
+    <div className="flex flex-col h-full p-8 bg-white">
+      <SlideHeader title="FEASIBILITY AND VIABILITY" />
+      
+      <div className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+        <div className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">1</div>
+        FEASIBLE TODAY — A PROVEN PIPELINE BUILT FROM OPEN TOOLS AND FREE DATA
+      </div>
+      
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="border border-slate-200 rounded-lg p-4">
+          <h4 className="font-bold text-teal-600 text-sm mb-2 flex items-center gap-1">• TECHNICAL</h4>
+          <p className="text-xs text-slate-700">Open-source geo + AI stack: Python, PyTorch, GeoPandas, PostGIS, Leaflet</p>
+        </div>
+        <div className="border border-slate-200 rounded-lg p-4">
+          <h4 className="font-bold text-blue-600 text-sm mb-2 flex items-center gap-1">• OPERATIONAL</h4>
+          <p className="text-xs text-slate-700">Decision support for authorities — never a replacement for them</p>
+        </div>
+        <div className="border border-slate-200 rounded-lg p-4">
+          <h4 className="font-bold text-green-600 text-sm mb-2 flex items-center gap-1">• ECONOMIC</h4>
+          <p className="text-xs text-slate-700">Prototype runs on free datasets and open tools; cloud added on demand</p>
+        </div>
+        <div className="border border-slate-200 rounded-lg p-4">
+          <h4 className="font-bold text-orange-600 text-sm mb-2 flex items-center gap-1">• SCALABLE</h4>
+          <p className="text-xs text-slate-700">Same modules extend to cyclones, landslides, earthquakes, forest fires</p>
+        </div>
+      </div>
+
+      <div className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+        <div className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">2</div>
+        DATA IS AVAILABLE — AND EVERY RISK HAS A COUNTER-MEASURE
+      </div>
+
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h4 className="text-xs font-bold text-slate-500 mb-4">SATELLITE REVISIT INTERVAL (DAYS)</h4>
+          {/* Mock Chart */}
+          <div className="space-y-3">
+            <div>
+              <div className="text-[10px] mb-1">Landsat (single)</div>
+              <div className="w-full bg-teal-700 h-6 rounded text-white text-[10px] flex items-center px-2 justify-end">16.0</div>
+            </div>
+            <div>
+              <div className="text-[10px] mb-1">Landsat 8+9</div>
+              <div className="w-1/2 bg-teal-600 h-6 rounded text-white text-[10px] flex items-center px-2 justify-end">8.0</div>
+            </div>
+            <div>
+              <div className="text-[10px] mb-1">Sentinel-1 (A+C)</div>
+              <div className="w-2/5 bg-teal-600 h-6 rounded text-white text-[10px] flex items-center px-2 justify-end">6.0</div>
+            </div>
+            <div>
+              <div className="text-[10px] mb-1">Sentinel-2 (A+B)</div>
+              <div className="w-1/3 bg-teal-600 h-6 rounded text-white text-[10px] flex items-center px-2 justify-end">5.0</div>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-500 italic mt-4">
+            Fusing sources shortens the effective wait; INSAT-3DS adds sub-hourly weather updates.
+          </p>
+        </div>
+
+        <div className="col-span-8">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr>
+                <th className="bg-orange-50 text-orange-800 text-left p-2 border-b-2 border-white">RISK / CHALLENGE</th>
+                <th className="bg-teal-50 text-teal-800 text-left p-2 border-b-2 border-white">STRATEGY BUILT INTO THE SYSTEM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td className="bg-orange-50/50 p-2 border-b border-white">Revisit delay right after a disaster</td><td className="bg-teal-50/50 p-2 border-b border-white">Fuse Sentinel-1, Sentinel-2, Landsat, weather</td></tr>
+              <tr><td className="bg-orange-50/50 p-2 border-b border-white">Cloud cover hides optical imagery</td><td className="bg-teal-50/50 p-2 border-b border-white">Sentinel-1 SAR images through cloud and night</td></tr>
+              <tr><td className="bg-orange-50/50 p-2 border-b border-white">AI may misread water or damage</td><td className="bg-teal-50/50 p-2 border-b border-white">Confidence score on every output; low ones flagged</td></tr>
+              <tr><td className="bg-orange-50/50 p-2 border-b border-white">Road and shelter data can be stale</td><td className="bg-teal-50/50 p-2 border-b border-white">Cross-checked with OSM, Bhuvan, field and drone data</td></tr>
+              <tr><td className="bg-orange-50/50 p-2 border-b border-white">Weak network and power on the ground</td><td className="bg-teal-50/50 p-2 border-b border-white">Offline-cached dashboard; cloud + edge compute</td></tr>
+              <tr><td className="bg-orange-50/50 p-2 border-b border-white">Flood extent and access change hourly</td><td className="bg-teal-50/50 p-2 border-b border-white">Continuous re-analysis and dynamic re-routing</td></tr>
+              <tr><td className="bg-orange-50/50 p-2 border-b border-white">Automated output could be over-trusted</td><td className="bg-teal-50/50 p-2 border-b border-white">Human-in-the-loop sign-off before any action</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSlide5 = () => (
+    <div className="flex flex-col h-full p-8 bg-white">
+      <SlideHeader title="IMPACT AND BENEFITS" />
+      
+      <div className="font-bold text-slate-800 flex items-center gap-2 mb-3">
+        <div className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">1</div>
+        WHAT CHANGES ON THE GROUND — ONE OPERATING PICTURE, NOT SCATTERED REPORTS
+      </div>
+      
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4 space-y-3">
+        <div>
+          <h4 className="font-bold text-slate-700 text-sm">DAMAGE ASSESSMENT</h4>
+          <p className="text-xs text-slate-600">Slow manual ground survey, district by district <span className="text-teal-600 font-bold mx-2">→</span> <span className="text-teal-700 font-bold">AI map of flood and damage extent straight from satellite</span></p>
+        </div>
+        <div>
+          <h4 className="font-bold text-slate-700 text-sm">RESCUE TARGETING</h4>
+          <p className="text-xs text-slate-600">Ad-hoc calls and an incomplete picture of who is worst hit <span className="text-teal-600 font-bold mx-2">→</span> <span className="text-teal-700 font-bold">Zones ranked by population exposure, damage and accessibility</span></p>
+        </div>
+        <div>
+          <h4 className="font-bold text-slate-700 text-sm">ROUTE PLANNING</h4>
+          <p className="text-xs text-slate-600">Crews sent down roads that may already be cut <span className="text-teal-600 font-bold mx-2">→</span> <span className="text-teal-700 font-bold">Risk-aware routes to hospitals and safe shelters</span></p>
+        </div>
+      </div>
+
+      <div className="font-bold text-slate-800 flex items-center gap-2 mb-3">
+        <div className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">2</div>
+        BENEFITS ACROSS FOUR DIMENSIONS
+      </div>
+
+      <div className="grid grid-cols-4 gap-4 mb-4 flex-1">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <h4 className="font-bold text-teal-600 text-sm mb-2 flex items-center gap-1">● SOCIAL</h4>
+          <ul className="text-[10px] text-slate-700 space-y-1 font-bold">
+            <li>▪ Rescue reaches the most vulnerable first</li>
+            <li>▪ Faster evacuation and emergency response</li>
+            <li>▪ Better access to hospitals and safe shelters</li>
+            <li>▪ Lower risk to human life during disasters</li>
+          </ul>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <h4 className="font-bold text-blue-800 text-sm mb-2 flex items-center gap-1">● ECONOMIC</h4>
+          <ul className="text-[10px] text-slate-700 space-y-1 font-bold">
+            <li>▪ Cuts time and manpower for assessment</li>
+            <li>▪ Optimises limited vehicles and personnel</li>
+            <li>▪ Locates damaged infrastructure sooner</li>
+            <li>▪ Open-source stack keeps build cost low</li>
+          </ul>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <h4 className="font-bold text-green-600 text-sm mb-2 flex items-center gap-1">● ENVIRONMENTAL</h4>
+          <ul className="text-[10px] text-slate-700 space-y-1 font-bold">
+            <li>▪ Rapid mapping of flood-affected land</li>
+            <li>▪ Identifies crop and land-surface damage</li>
+            <li>▪ Monitors rivers, water bodies and terrain</li>
+            <li>▪ Historical maps aid climate-risk planning</li>
+          </ul>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <h4 className="font-bold text-orange-700 text-sm mb-2 flex items-center gap-1">● GOVERNANCE</h4>
+          <ul className="text-[10px] text-slate-700 space-y-1 font-bold">
+            <li>▪ One GIS command picture for every team</li>
+            <li>▪ Evidence-based, multi-source decisions</li>
+            <li>▪ Human verification before critical action</li>
+            <li>▪ Spans preparedness, response, recovery</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="font-bold text-slate-800 flex items-center gap-2 mb-2">
+        <div className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">3</div>
+        PILOT TARGETS FOR THE FIRST DISTRICT DEPLOYMENT
+      </div>
+      <div className="flex gap-4">
+        <div className="flex-1 bg-slate-50 border border-slate-200 rounded flex items-center p-2 gap-3">
+          <div className="text-teal-700 font-black text-xl w-16 text-center">&lt; 6 hrs</div>
+          <div className="text-[10px] font-bold text-slate-700">Initial assessment time, down from 24–48 hrs today</div>
+        </div>
+        <div className="flex-1 bg-slate-50 border border-slate-200 rounded flex items-center p-2 gap-3">
+          <div className="text-teal-700 font-black text-xl w-16 text-center">+30%</div>
+          <div className="text-[10px] font-bold text-slate-700">Rescues reaching critical zones in the first 12 hrs</div>
+        </div>
+        <div className="flex-1 bg-slate-50 border border-slate-200 rounded flex items-center p-2 gap-3">
+          <div className="text-teal-700 font-black text-xl w-16 text-center">−50%</div>
+          <div className="text-[10px] font-bold text-slate-700">Failed route attempts, through risk-aware routing</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSlide6 = () => (
+    <div className="flex flex-col h-full p-8 bg-white">
+      <SlideHeader title="RESEARCH AND REFERENCES" />
+      
+      <div className="grid grid-cols-2 gap-8 h-full">
+        <div>
+          <div className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+            <div className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">1</div>
+            REFERENCES & RESEARCH WORK
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">● INTERNATIONAL EARTH-OBSERVATION GUIDANCE</h4>
+              <ul className="text-xs text-slate-700 ml-5 mt-1 space-y-1">
+                <li><strong className="text-slate-900">UN-SPIDER</strong> — Flood mapping & damage assessment with Sentinel-2</li>
+                <li><strong className="text-slate-900">UN-SPIDER</strong> — Radar-based flood mapping with SAR</li>
+                <li><strong className="text-slate-900">ESA</strong> — Sentinel-1 for emergency response and impact assessment</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">● INDIAN SPACE & METEOROLOGICAL DATA</h4>
+              <ul className="text-xs text-slate-700 ml-5 mt-1 space-y-1">
+                <li><strong className="text-slate-900">ISRO / NRSC</strong> — Bhuvan geoportal, Indian geospatial layers</li>
+                <li><strong className="text-slate-900">ISRO</strong> — MOSDAC satellite meteorological data</li>
+                <li><strong className="text-slate-900">ISRO</strong> — INSAT-3DS meteorological satellite and storm warning</li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">● GEOSPATIAL PROCESSING & HUMANITARIAN MAPPING</h4>
+              <ul className="text-xs text-slate-700 ml-5 mt-1 space-y-1">
+                <li><strong className="text-slate-900">Google Earth Engine</strong> — Sentinel-1 change detection for inundation mapping</li>
+                <li><strong className="text-slate-900">HOT / OpenStreetMap</strong> — disaster road, building and infrastructure data</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="font-bold text-slate-800 flex items-center gap-2 mb-4">
+            <div className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">2</div>
+            RESEARCH AREAS STUDIED
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">Remote Sensing</div>
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">SAR Image Processing</div>
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">AI / Computer Vision</div>
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">GIS & Spatial Analysis</div>
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">Risk Assessment</div>
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">Graph-Based Routing</div>
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">Humanitarian Mapping</div>
+            <div className="bg-teal-50 border border-teal-100 text-teal-800 font-bold text-center py-2 rounded text-sm">Human-in-the-Loop AI</div>
+          </div>
+
+          <div className="bg-slate-800 text-white p-5 rounded-lg shadow-lg">
+            <h4 className="text-slate-400 text-xs font-bold mb-2 uppercase">OVERALL RESEARCH BASIS</h4>
+            <p className="text-sm leading-relaxed">
+              Satellite EO, SAR, GIS and GeoAI are already established for disaster mapping and response. 
+              <br/><br/>
+              <span className="text-teal-300 font-medium">DRISHTI-AID's contribution is to chain them into one workflow and keep a human in the loop at every operational decision.</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-slate-900/95 flex flex-col">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-800 text-white shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="bg-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center">
+            <Award className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="font-bold text-sm">SIH 2026 Pitch Deck Viewer</h2>
+            <p className="text-xs text-slate-400">Team GeoPulse • DRISHTI-AID</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1">
+            <button 
+              onClick={prevSlide} 
+              disabled={currentSlide === 1}
+              className="p-1.5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono font-bold px-2 w-20 text-center">
+              Slide {currentSlide} / {totalSlides}
+            </span>
+            <button 
+              onClick={nextSlide} 
+              disabled={currentSlide === totalSlides}
+              className="p-1.5 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-bold transition disabled:opacity-50"
           >
-            {/* Background Ambient Glows */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            <Download className="w-4 h-4" />
+            <span>{isExporting ? 'Exporting...' : 'Export PDF'}</span>
+          </button>
+          
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
-            {/* Header: Brand, Title & Tagline */}
-            <div className="flex items-start justify-between border-b border-slate-800/80 pb-4 mb-4 relative z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/30 ring-1 ring-cyan-300/40">
-                  <Radio className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-white font-mono">
-                      DRISHTI-AID
-                    </span>
-                    <span className="px-2 py-0.5 text-[10px] font-mono uppercase rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
-                      DEFENSE & DISASTER GIS
-                    </span>
-                    <span className="px-2 py-0.5 text-[10px] font-mono uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                      ALL-WEATHER RADAR
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 font-medium mt-0.5">
-                    Real-Time Synthetic Aperture Radar (SAR) Flood Inundation & AI Tactical Evacuation Engine
-                  </p>
-                </div>
+      {/* Viewer Area */}
+      <div className="flex-1 flex items-center justify-center p-6 overflow-hidden">
+        {/* Force 16:9 Aspect Ratio Container for the Slide */}
+        <div className="relative w-full max-w-[1280px] aspect-video bg-white shadow-2xl rounded-xl overflow-hidden shrink-0 transition-all duration-300 transform">
+          <div ref={slideRef} className="absolute inset-0 bg-white">
+            {currentSlide === 1 && renderSlide1()}
+            {currentSlide === 2 && renderSlide2()}
+            {currentSlide === 3 && renderSlide3()}
+            {currentSlide === 4 && renderSlide4()}
+            {currentSlide === 5 && renderSlide5()}
+            {currentSlide === 6 && renderSlide6()}
+            
+            {/* Common Footer for slides 2-6 */}
+            {currentSlide > 1 && (
+              <div className="absolute bottom-4 right-6 text-slate-500 font-bold text-sm">
+                {currentSlide}
               </div>
-
-              <div className="text-right font-mono hidden sm:block">
-                <div className="text-xs font-bold text-cyan-400">EXECUTIVE BRIEFING</div>
-                <div className="text-[11px] text-slate-400">250 km² AOI • 10m Calibrated Pixel</div>
-                <div className="text-[10px] text-slate-500">Dual-Polarized C-SAR • Gemini 3.8 AI</div>
-              </div>
-            </div>
-
-            {/* 3-Column Pitch Deck Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10 mb-4">
-              {/* Column 1: The Problem & The Solution */}
-              <div className="space-y-3.5">
-                {/* 1. Problem Statement */}
-                <div className="bg-slate-900/80 border border-rose-500/30 rounded-xl p-3.5 shadow-sm">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-400 mb-1.5">
-                    <Target className="w-3.5 h-3.5" />
-                    <span>The Critical Gap</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-white mb-1">
-                    Optical Satellites Are Blind in Cloudbursts
-                  </h3>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    During heavy monsoons, <strong>95% of optical imagery (Landsat/Google Maps) is obscured by cloud cover</strong>. Emergency responders wait 24–48 hours for cloudy skies to clear while urban corridors flood in minutes without situational awareness.
-                  </p>
-                </div>
-
-                {/* 2. The Solution */}
-                <div className="bg-slate-900/80 border border-cyan-500/30 rounded-xl p-3.5 shadow-sm">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
-                    <Zap className="w-3.5 h-3.5" />
-                    <span>Our Solution</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-white mb-1">
-                    C-Band Radar + Sub-Second AI Triage
-                  </h3>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    <strong>DRISHTI-AID</strong> ingests European Space Agency (ESA) Copernicus Sentinel-1 C-SAR radar that penetrates thick cloud cover day and night. It calculates backscatter decibel drops (-18dB) to map water within seconds and scores community vulnerability.
-                  </p>
-                </div>
-
-                {/* Core Metrics Pill Group */}
-                <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2">
-                    <div className="text-base font-extrabold text-cyan-400">250 km²</div>
-                    <div className="text-[9px] text-slate-400 uppercase">Expanded Regional AOI</div>
-                  </div>
-                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2">
-                    <div className="text-base font-extrabold text-emerald-400">&lt; 3.2s</div>
-                    <div className="text-[9px] text-slate-400 uppercase">Inundation Pipeline</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Column 2: Tech Architecture & Differentiation */}
-              <div className="space-y-3.5">
-                {/* 3. Core Capabilities */}
-                <div className="bg-slate-900/80 border border-indigo-500/30 rounded-xl p-3.5 shadow-sm">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1.5">
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Proprietary GIS Pipeline</span>
-                  </div>
-                  <div className="space-y-2 text-[11px]">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-                      <div>
-                        <strong className="text-white">Dual-Pol VV/VH Radar Inundation:</strong> Calibrated specular reflection matrix identifies submerged roads and urban waterlogging.
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-                      <div>
-                        <strong className="text-white">Tri-Engine Map Switching:</strong> Seamless live toggling between CARTO Spatial Cloud, Copernicus Satellite Canvas, and Tactical GIS.
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-                      <div>
-                        <strong className="text-white">Dynamic A* Flood-Clear Routing:</strong> Real-time road penalty graph finding safe evacuation corridors to NDRF shelters and hospitals.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. AI Strategic Co-Pilot */}
-                <div className="bg-slate-900/80 border border-purple-500/30 rounded-xl p-3.5 shadow-sm">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-purple-400 mb-1.5">
-                    <BrainCircuit className="w-3.5 h-3.5" />
-                    <span>Gemini 3.8 AI Incident Commander</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
-                    Translates raw pixel mathematics into actionable NDRF operational orders: boat allocations, medical triage routes, and high-consequence community alerts.
-                  </p>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-purple-300 bg-purple-950/40 px-2 py-1 rounded border border-purple-500/20">
-                    <span>Google GenAI SDK Grounding</span>
-                    <span>100% Automated SITREPs</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Column 3: Market, Deployment & Impact */}
-              <div className="space-y-3.5">
-                {/* 5. Target Stakeholders */}
-                <div className="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3.5 shadow-sm">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1.5">
-                    <Globe2 className="w-3.5 h-3.5" />
-                    <span>Users & Deployability</span>
-                  </div>
-                  <div className="space-y-1.5 text-[11px] text-slate-300">
-                    <div className="flex items-center justify-between p-1.5 bg-slate-950/70 rounded-lg border border-slate-800">
-                      <span className="font-semibold text-white">NDRF & State DMAs</span>
-                      <span className="text-[10px] font-mono text-cyan-300">Incident Command</span>
-                    </div>
-                    <div className="flex items-center justify-between p-1.5 bg-slate-950/70 rounded-lg border border-slate-800">
-                      <span className="font-semibold text-white">Municipal Corporations</span>
-                      <span className="text-[10px] font-mono text-cyan-300">Urban Flood Triage</span>
-                    </div>
-                    <div className="flex items-center justify-between p-1.5 bg-slate-950/70 rounded-lg border border-slate-800">
-                      <span className="font-semibold text-white">Insurers & Infrastructure</span>
-                      <span className="text-[10px] font-mono text-cyan-300">Damage Estimation</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 6. Proven Historical Scenarios */}
-                <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-3.5 shadow-sm">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Calibrated Scenarios</span>
-                  </div>
-                  <div className="space-y-1.5 text-[10px] font-mono text-slate-300">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white">● Mumbai Mithi Basin:</span>
-                      <span className="text-cyan-400">250 km² • CST/BKC Corridor</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white">● Chennai Adyar Catchment:</span>
-                      <span className="text-cyan-400">250 km² • Chembarambakkam</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white">● Kerala Periyar Plain:</span>
-                      <span className="text-cyan-400">250 km² • Cochin Airport Hub</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Box */}
-                <div className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/70 to-indigo-950/70 border border-cyan-500/40 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-[9px] uppercase font-mono text-cyan-400 font-bold block">
-                      Production State
-                    </span>
-                    <strong className="text-white">TRL-7 Functional Prototype</strong>
-                  </div>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
-                    READY TO DEPLOY
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Strip: Key Differentiators & Call to Action */}
-            <div className="border-t border-slate-800/80 pt-3 relative z-10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-4 text-[11px] text-slate-400 flex-wrap">
-                <span className="flex items-center gap-1 text-slate-300">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Zero Cloud Blindspots
-                </span>
-                <span className="flex items-center gap-1 text-slate-300">
-                  <Database className="w-3.5 h-3.5 text-cyan-400" /> Copernicus Data Space Ecosystem
-                </span>
-                <span className="flex items-center gap-1 text-slate-300">
-                  <Award className="w-3.5 h-3.5 text-indigo-400" /> A* Safe Routing Engine
-                </span>
-                <span className="flex items-center gap-1 text-slate-300">
-                  <FileCheck className="w-3.5 h-3.5 text-purple-400" /> One-Click SITREP PDF
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 font-mono text-[11px]">
-                <span className="text-slate-400">Contact:</span>
-                <strong className="text-cyan-300 font-bold">DRISHTI-AID Initiative</strong>
-                <span className="text-slate-600">•</span>
-                <span className="text-slate-400">gauravmeenaonly@gmail.com</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

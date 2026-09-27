@@ -6,7 +6,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { SCENARIOS } from './geoData';
+import { SCENARIOS, getScenario } from './geoData.ts';
 
 export interface NasaGpmGranule {
   granuleId: string;
@@ -202,7 +202,7 @@ export async function getNasaEarthdataStatus(): Promise<NasaEarthdataStatus> {
 
 export async function getNasaGpmGranules(scenarioId: string): Promise<NasaGpmGranule[]> {
   const token = getEarthdataToken();
-  const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
+  const scenario = getScenario(scenarioId);
   const [lat, lon] = scenario.center;
 
   if (!token) {

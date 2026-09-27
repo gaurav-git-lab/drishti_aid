@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   Calendar,
   Layers,
@@ -205,6 +206,7 @@ const COPERNICUS_LAYERS: CopernicusLayerMeta[] = [
 
 interface CopernicusMainViewProps {
   scenario: DisasterScenario;
+  onOpenDetailedView?: () => void;
   onOpenTacticalGis?: () => void;
   onOpenCarto?: () => void;
   onOpenModal?: () => void;
@@ -213,6 +215,7 @@ interface CopernicusMainViewProps {
 
 export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
   scenario,
+  onOpenDetailedView,
   onOpenTacticalGis,
   onOpenCarto,
   onOpenModal,
@@ -267,6 +270,12 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
     if (!mapContainerRef.current) return;
 
     if (leafletMapRef.current) {
+      try {
+        swathLayerGroupRef.current.clearLayers();
+        aoiLayerGroupRef.current.clearLayers();
+      } catch (e) {
+        // Safe ignore
+      }
       leafletMapRef.current.remove();
       leafletMapRef.current = null;
     }
@@ -278,6 +287,10 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
       maxZoom: 18,
       zoomControl: false,
     });
+
+    // Clear before adding to new map
+    swathLayerGroupRef.current.clearLayers();
+    aoiLayerGroupRef.current.clearLayers();
 
     // High-resolution satellite basemap
     const satelliteTile = L.tileLayer(
@@ -297,6 +310,12 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
     leafletMapRef.current = map;
 
     return () => {
+      try {
+        swathLayerGroupRef.current.clearLayers();
+        aoiLayerGroupRef.current.clearLayers();
+      } catch (e) {
+        // Safe ignore
+      }
       map.remove();
       leafletMapRef.current = null;
     };
@@ -361,6 +380,7 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
 
   // 3. Fetch Real Copernicus Data Space Acquisitions for the Selected Layer & Date
   useEffect(() => {
+    let isMounted = true;
     if (!leafletMapRef.current) return;
     const swathGroup = swathLayerGroupRef.current;
     swathGroup.clearLayers();
@@ -373,6 +393,7 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
     fetch(`/api/copernicus/search?scenario=${scenario.id}&collection=${collection}`)
       .then((res) => res.json())
       .then((json) => {
+        if (!isMounted || !leafletMapRef.current) return;
         setIsLoadingFootprints(false);
         if (!json.success || !json.data?.value) return;
 
@@ -394,6 +415,7 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
 
         // Render footprints as vector swaths across the scenario
         products.slice(0, 3).forEach((prod: any, idx: number) => {
+          if (!isMounted || !leafletMapRef.current) return;
           if (!prod.Footprint) return;
 
           try {
@@ -425,16 +447,24 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
               { sticky: true }
             );
 
-            swathPolygon.addTo(swathGroup);
+            if (isMounted && leafletMapRef.current) {
+              swathPolygon.addTo(swathGroup);
+            }
           } catch (e) {
             console.warn('[Copernicus Main View] Failed to parse swath footprint geometry', e);
           }
         });
       })
       .catch((err) => {
+        if (!isMounted) return;
         setIsLoadingFootprints(false);
         console.warn('[Copernicus Main View] Failed to fetch Copernicus swaths', err);
       });
+
+    return () => {
+      isMounted = false;
+      swathGroup.clearLayers();
+    };
   }, [scenario.id, activeLayer, showSwathFootprints]);
 
   // Recenter map
@@ -729,27 +759,15 @@ export const CopernicusMainView: React.FC<CopernicusMainViewProps> = ({
             </button>
           )}
 
-          {onOpenCarto && (
+          {onOpenDetailedView && (
             <button
-              id="btn-switch-to-carto-from-copernicus"
-              onClick={onOpenCarto}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 transition active:scale-95"
-              title="Switch to CARTO Geospatial Map"
+              id="btn-switch-to-detailed-from-copernicus"
+              onClick={onOpenDetailedView}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 transition active:scale-95"
+              title="Switch to Google Maps Detailed View"
             >
-              <Layers className="w-3 h-3 text-emerald-400" />
-              <span>CARTO</span>
-            </button>
-          )}
-
-          {onOpenTacticalGis && (
-            <button
-              id="btn-switch-to-tactical-from-copernicus"
-              onClick={onOpenTacticalGis}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 transition active:scale-95"
-              title="Switch to Tactical SAR & Flood Inundation GIS"
-            >
-              <Layers className="w-3 h-3 text-cyan-400" />
-              <span>Tactical GIS</span>
+              <MapPin className="w-3 h-3 text-emerald-400" />
+              <span>Detailed View</span>
             </button>
           )}
 

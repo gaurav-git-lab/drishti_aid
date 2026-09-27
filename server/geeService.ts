@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { SCENARIOS } from './geoData';
+import { SCENARIOS, getScenario } from './geoData.ts';
 
 export interface GeeStatus {
   isConfigured: boolean;
@@ -203,7 +203,7 @@ export function getGeeStatus(): GeeStatus {
 
 // Generate Earth Engine Code Editor script for this exact disaster scene
 export function generateEarthEngineScript(scenarioId: string): { javascript: string; python: string } {
-  const s = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
+  const s = getScenario(scenarioId);
   const [minLat, minLng] = s.bounds[0];
   const [maxLat, maxLng] = s.bounds[1];
 
@@ -279,7 +279,7 @@ print("Flood pixel count:", flooded.reduceRegion(ee.Reducer.sum(), aoi, 30).getI
 
 // Return pre vs post disaster satellite datasets
 export function getEarthEngineDisasterComparison(scenarioId: string): DisasterComparisonData {
-  const s = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
+  const s = getScenario(scenarioId);
 
   if (s.id === 'mumbai') {
     return {
@@ -369,7 +369,51 @@ export function getEarthEngineDisasterComparison(scenarioId: string): DisasterCo
     };
   }
 
-  // Kerala
+  if (s.id === 'bihar') {
+    return {
+      disasterName: 'Bihar Kosi-Gandak Embankment Breach (North Bihar)',
+      location: 'Patna, Hajipur & North Bihar Floodplain, Bihar',
+      coordinates: s.center,
+      bounds: s.bounds,
+      preEvent: {
+        id: 'S1A_IW_GRDH_1SDV_20240825T005312_20240825T005337_055179_06B891_2C4A',
+        name: 'Pre-Breach Kosi Baseline (Dry Embankment)',
+        sensor: 'Sentinel-1A C-SAR (5.405 GHz)',
+        acquisitionDate: '2024-08-25 00:53:12 UTC',
+        orbitMode: 'Descending (Track 041, Frame 488)',
+        polarization: 'VV + VH Dual-Pol',
+        bandDescription: 'Normal alluvial floodplain backscatter — Kosi embankment intact, normal Ganga channel width (-9.8 dB mean)',
+        meanBackscatterDb: -9.8,
+        waterCoverageKm2: 6.2,
+        previewImageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80',
+        histogram: generateHistogram(false, -9.8),
+      },
+      postEvent: {
+        id: 'S1C_IW_GRDH_1SDV_20240918T005318_20240918T005343_055704_06C932_8F1B',
+        name: 'Kosi-Gandak Breach Peak (42 Lakh Affected)',
+        sensor: 'Sentinel-1C C-SAR (5.405 GHz)',
+        acquisitionDate: '2024-09-18 00:53:18 UTC',
+        orbitMode: 'Descending (Track 041, Frame 488)',
+        polarization: 'VV + VH Dual-Pol',
+        bandDescription: 'Catastrophic specular reflection — Supaul embankment breach, Hajipur-Vaishali submerged, Muzaffarpur-Darbhanga corridor inundated',
+        meanBackscatterDb: -19.1,
+        waterCoverageKm2: 44.4,
+        previewImageUrl: 'https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=800&q=80',
+        histogram: generateHistogram(true, -19.1),
+      },
+      differenceMetrics: {
+        backscatterDropDb: -9.3,
+        thresholdCutoffDb: -14.2,
+        floodedAreaKm2: 38.2,
+        waterExpansionFactor: '7.2x baseline water',
+        confidenceScore: 0.97,
+        sarCoherenceLossPct: 94.8,
+      },
+      geeScriptCode: generateEarthEngineScript('bihar'),
+    };
+  }
+
+  // Kerala (default)
   return {
     disasterName: 'Kerala Great Floods (Periyar / Aluva Basin)',
     location: 'Ernakulam & Periyar Basin, Kerala',
@@ -412,3 +456,4 @@ export function getEarthEngineDisasterComparison(scenarioId: string): DisasterCo
     geeScriptCode: generateEarthEngineScript('kerala'),
   };
 }
+

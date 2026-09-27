@@ -3,8 +3,48 @@
  * A* Pathfinding over Road Network Graph with Dynamic Flood Impedance
  */
 
-import { SCENARIOS, ShelterPoint, RoadNode, RoadEdge } from './geoData';
-import { runSarChangeDetection, FloodPolygonFeature } from './changeDetection';
+import { getScenario, type ShelterPoint, type RoadNode, type RoadEdge } from './geoData.ts';
+import { runSarChangeDetection, type FloodPolygonFeature, type ChangeDetectionResult } from './changeDetection.ts';
+
+// ─── Binary Min-Heap for O(log n) Dijkstra priority queue ───────────────────
+class MinHeap<T extends { cost: number }> {
+  private data: T[] = [];
+  get size() { return this.data.length; }
+  push(item: T) {
+    this.data.push(item);
+    this._bubbleUp(this.data.length - 1);
+  }
+  pop(): T | undefined {
+    if (this.data.length === 0) return undefined;
+    const top = this.data[0];
+    const last = this.data.pop()!;
+    if (this.data.length > 0) {
+      this.data[0] = last;
+      this._sinkDown(0);
+    }
+    return top;
+  }
+  private _bubbleUp(i: number) {
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (this.data[parent].cost <= this.data[i].cost) break;
+      [this.data[parent], this.data[i]] = [this.data[i], this.data[parent]];
+      i = parent;
+    }
+  }
+  private _sinkDown(i: number) {
+    const n = this.data.length;
+    while (true) {
+      let smallest = i;
+      const l = 2 * i + 1, r = 2 * i + 2;
+      if (l < n && this.data[l].cost < this.data[smallest].cost) smallest = l;
+      if (r < n && this.data[r].cost < this.data[smallest].cost) smallest = r;
+      if (smallest === i) break;
+      [this.data[smallest], this.data[i]] = [this.data[i], this.data[smallest]];
+      i = smallest;
+    }
+  }
+}
 
 export interface RouteStep {
   instruction: string;
@@ -72,10 +112,11 @@ function haversineDistanceKm(c1: [number, number], c2: [number, number]): number
   return R * c;
 }
 
-// Check if a point is near any flood polygon
+// Check if a point is near any flood polygon — uses precomputed bounding boxes
 function getFloodImpedance(
   pt: [number, number],
   floodFeatures: FloodPolygonFeature[],
+  floodBBoxes: Array<{ minLng: number; maxLng: number; minLat: number; maxLat: number }>,
   isElevated: boolean = false
 ): { isFlooded: boolean; penalty: number; reason?: string } {
   if (isElevated) {
@@ -84,12 +125,9 @@ function getFloodImpedance(
 
   const [lat, lng] = pt;
 
-  for (const feat of floodFeatures) {
-    const coords = feat.geometry.coordinates[0];
-    const minLng = Math.min(...coords.map((c) => c[0]));
-    const maxLng = Math.max(...coords.map((c) => c[0]));
-    const minLat = Math.min(...coords.map((c) => c[1]));
-    const maxLat = Math.max(...coords.map((c) => c[1]));
+  for (let i = 0; i < floodFeatures.length; i++) {
+    const { minLng, maxLng, minLat, maxLat } = floodBBoxes[i];
+    const feat = floodFeatures[i];
 
     if (lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat) {
       const depth = feat.properties.floodDepthM;
@@ -106,12 +144,27 @@ function getFloodImpedance(
 export function computeSafeRoutes(
   scenarioId: string,
   timelineHour: number = 4,
-  customOrigin?: [number, number]
+  customOrigin?: [number, number],
+  precomputedChangeDetection?: ChangeDetectionResult
 ): RoutePlanningResult {
   const startTime = Date.now();
-  const scenario = SCENARIOS[scenarioId] || SCENARIOS.mumbai;
-  const changeDetection = runSarChangeDetection(scenarioId, timelineHour);
+  const scenario = getScenario(scenarioId);
+  // Reuse caller-supplied change detection to avoid re-running SAR computation
+  const changeDetection = precomputedChangeDetection ?? runSarChangeDetection(scenarioId, timelineHour);
   const floodFeatures = changeDetection.geoJson.features;
+
+  // Precompute bounding boxes for all flood polygons once
+  const floodBBoxes = floodFeatures.map((feat) => {
+    const coords = feat.geometry.coordinates[0];
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const pt of coords) {
+      if (pt[0] < minLng) minLng = pt[0];
+      if (pt[0] > maxLng) maxLng = pt[0];
+      if (pt[1] < minLat) minLat = pt[1];
+      if (pt[1] > maxLat) maxLat = pt[1];
+    }
+    return { minLng, maxLng, minLat, maxLat };
+  });
 
   const originCoords: [number, number] = customOrigin || scenario.epicenter;
   const nodeMap = new Map<string, RoadNode>();
@@ -130,7 +183,7 @@ export function computeSafeRoutes(
     // Check mid-point for flood impedance
     const midLat = (fromNode.coordinates[0] + toNode.coordinates[0]) / 2;
     const midLng = (fromNode.coordinates[1] + toNode.coordinates[1]) / 2;
-    const floodCheck = getFloodImpedance([midLat, midLng], floodFeatures, isElevated);
+    const floodCheck = getFloodImpedance([midLat, midLng], floodFeatures, floodBBoxes, isElevated);
 
     let cost = edge.distanceKm * floodCheck.penalty;
     if (isElevated) {
@@ -152,7 +205,7 @@ export function computeSafeRoutes(
     }
   }
 
-  // Dijkstra / A* from startNodeId to all destinations
+  // Dijkstra / A* from startNodeId to all destinations — O((E+V) log V) with min-heap
   const dist = new Map<string, number>();
   const prev = new Map<string, { nodeId: string; edge?: RoadEdge }>();
   const visited = new Set<string>();
@@ -160,11 +213,11 @@ export function computeSafeRoutes(
   scenario.roadNetwork.nodes.forEach((n) => dist.set(n.id, Infinity));
   dist.set(startNodeId, 0);
 
-  const pq: { id: string; cost: number }[] = [{ id: startNodeId, cost: 0 }];
+  const pq = new MinHeap<{ id: string; cost: number }>();
+  pq.push({ id: startNodeId, cost: 0 });
 
-  while (pq.length > 0) {
-    pq.sort((a, b) => a.cost - b.cost);
-    const curr = pq.shift()!;
+  while (pq.size > 0) {
+    const curr = pq.pop()!;
 
     if (visited.has(curr.id)) continue;
     visited.add(curr.id);
@@ -238,7 +291,7 @@ export function computeSafeRoutes(
           const isElevated = connectingEdge?.type === 'bridge' || connectingEdge?.type === 'highway';
 
           // Check if intermediate nodes encounter waterlogging
-          const check = getFloodImpedance(n.coordinates, floodFeatures, isElevated);
+          const check = getFloodImpedance(n.coordinates, floodFeatures, floodBBoxes, isElevated);
           if (i > 1 && check.penalty > maxFloodImpact) {
             maxFloodImpact = check.penalty;
           }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   DisasterScenario,
   ChangeDetectionResult,
@@ -30,9 +30,22 @@ import { CopernicusDataModal } from './components/CopernicusDataModal';
 import { CartoMapModal } from './components/CartoMapModal';
 import { CartoMainView } from './components/CartoMainView';
 import { CopernicusMainView } from './components/CopernicusMainView';
+import { DetailedGoogleMapView } from './components/DetailedGoogleMapView';
 import { PitchDeckModal } from './components/PitchDeckModal';
+import { LandingPage } from './components/LandingPage';
 
 export default function App() {
+  // Landing page state
+  const [showLandingPage, setShowLandingPage] = useState<boolean>(true);
+
+  // Google Maps Platform Quota Alert State
+  const [quotaExceeded, setQuotaExceeded] = useState<boolean>(false);
+  useEffect(() => {
+    const handler = () => setQuotaExceeded(true);
+    window.addEventListener('gmp-quota-exceeded', handler);
+    return () => window.removeEventListener('gmp-quota-exceeded', handler);
+  }, []);
+
   // Scenario state
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('mumbai');
   const [scenario, setScenario] = useState<DisasterScenario | null>(null);
@@ -83,12 +96,16 @@ export default function App() {
   const [isCopernicusOpen, setIsCopernicusOpen] = useState<boolean>(false);
   const [isCartoOpen, setIsCartoOpen] = useState<boolean>(false);
   const [isPitchDeckOpen, setIsPitchDeckOpen] = useState<boolean>(false);
-  // Main window map engine: 'carto' (default), 'copernicus', or 'tactical'
-  const [activeMapMode, setActiveMapMode] = useState<'carto' | 'tactical' | 'copernicus'>('carto');
+  // Main window map engine: 'detailed' (default Google Maps platform view) or 'copernicus'
+  const [activeMapMode, setActiveMapMode] = useState<'detailed' | 'copernicus'>('detailed');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [isMetricsExpanded, setIsMetricsExpanded] = useState<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
+
+  // Refs for debouncing and request cancellation
+  const timelineDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timelineAbortRef = useRef<AbortController | null>(null);
 
   // 1. Initial Load of Scenario
   const loadScenario = useCallback(async (scenarioId: string) => {
@@ -102,16 +119,30 @@ export default function App() {
       setRiskZones(null);
       setRoutesResult(null);
       setAiBriefing(null);
-      setIsPostEventSimulated(false);
+      setIsPostEventSimulated(true);
       setSelectedFeature(null);
       setTimelineHour(4);
       setPipelineProgress({
         stage: 'idle',
         progressPercent: 0,
         elapsedMs: 0,
-        currentStepMessage: 'System idle',
+        currentStepMessage: `Loaded ${data.scenario.name}`,
         benchmarks: {},
       });
+
+      // Auto-compute SAR change detection, risk zones and safe routes in parallel
+      try {
+        const [cd, rz, rt] = await Promise.all([
+          runChangeDetectionApi(scenarioId, 4),
+          computeRiskZonesApi(scenarioId, 4),
+          planSafeRoutesApi(scenarioId, 4),
+        ]);
+        setChangeDetection(cd);
+        setRiskZones(rz);
+        setRoutesResult(rt);
+      } catch (pipeErr) {
+        console.warn('Auto SAR computation warning:', pipeErr);
+      }
     } catch (err) {
       console.error('Failed to load scenario:', err);
     } finally {
@@ -126,6 +157,7 @@ export default function App() {
   // Handle Scenario Picker change
   const handleScenarioChange = (newScenarioId: string) => {
     setSelectedScenarioId(newScenarioId);
+    setActiveMapMode('tactical');
   };
 
   // 2. Simulate Post-Event SAR Ingestion
@@ -171,30 +203,20 @@ export default function App() {
 
     await new Promise((r) => setTimeout(r, 350));
 
-    // Step 3: Multi-criteria Risk Scoring (< 5s benchmark target)
+    // Steps 3 & 4 in parallel: Risk Scoring + Route Planning (<5s each)
     setPipelineProgress((prev) => ({
       ...prev,
       stage: 'risk_scoring',
-      progressPercent: 70,
+      progressPercent: 65,
       elapsedMs: Date.now() - overallStartTime,
-      currentStepMessage: `Computing Risk = (Flood*0.4 + WorldPop*0.4 + Access*0.2)...`,
+      currentStepMessage: `Computing Risk = (Flood*0.4 + WorldPop*0.4 + Access*0.2) & A* routing in parallel...`,
     }));
 
-    const rkResult = await computeRiskZonesApi(scenario.id, timelineHour);
+    const [rkResult, rtResult] = await Promise.all([
+      computeRiskZonesApi(scenario.id, timelineHour),
+      planSafeRoutesApi(scenario.id, timelineHour),
+    ]);
     setRiskZones(rkResult);
-
-    await new Promise((r) => setTimeout(r, 350));
-
-    // Step 4: A* Safe Evacuation Routing (< 5s benchmark target)
-    setPipelineProgress((prev) => ({
-      ...prev,
-      stage: 'route_planning',
-      progressPercent: 90,
-      elapsedMs: Date.now() - overallStartTime,
-      currentStepMessage: `Calculating A* obstacle-avoiding routes to 20 shelters/hospitals...`,
-    }));
-
-    const rtResult = await planSafeRoutesApi(scenario.id, timelineHour);
     setRoutesResult(rtResult);
 
     const totalPipelineMs = Date.now() - overallStartTime;
@@ -248,25 +270,43 @@ export default function App() {
     }
   };
 
-  // Timeline Hour Change (scrubbing)
-  const handleTimelineHourChange = async (newHour: number) => {
+  // Timeline Hour Change (scrubbing) — debounced to prevent spamming the API on every tick
+  const handleTimelineHourChange = (newHour: number) => {
     setTimelineHour(newHour);
     if (!scenario) return;
+    if (!(changeDetection || isPostEventSimulated)) return;
 
-    if (changeDetection || isPostEventSimulated) {
-      const newCd = await runChangeDetectionApi(scenario.id, newHour);
-      setChangeDetection(newCd);
+    // Cancel any pending debounce
+    if (timelineDebounceRef.current) clearTimeout(timelineDebounceRef.current);
 
-      if (riskZones) {
-        const newRk = await computeRiskZonesApi(scenario.id, newHour);
-        setRiskZones(newRk);
+    timelineDebounceRef.current = setTimeout(async () => {
+      // Cancel the previous in-flight request set
+      if (timelineAbortRef.current) timelineAbortRef.current.abort();
+      timelineAbortRef.current = new AbortController();
+
+      try {
+        const newCd = await runChangeDetectionApi(scenario.id, newHour);
+        setChangeDetection(newCd);
+
+        // Run risk and routes in parallel if they were previously computed
+        if (riskZones || routesResult) {
+          const parallelTasks: Promise<void>[] = [];
+          if (riskZones) {
+            parallelTasks.push(
+              computeRiskZonesApi(scenario.id, newHour).then(setRiskZones)
+            );
+          }
+          if (routesResult) {
+            parallelTasks.push(
+              planSafeRoutesApi(scenario.id, newHour).then(setRoutesResult)
+            );
+          }
+          await Promise.all(parallelTasks);
+        }
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') console.warn('Timeline update error:', err);
       }
-
-      if (routesResult) {
-        const newRt = await planSafeRoutesApi(scenario.id, newHour);
-        setRoutesResult(newRt);
-      }
-    }
+    }, 400); // 400ms debounce
   };
 
   // Toggle Layer Visibility
@@ -276,6 +316,21 @@ export default function App() {
       [layer]: !prev[layer],
     }));
   };
+
+  if (showLandingPage) {
+    return (
+      <LandingPage
+        currentScenarioId={selectedScenarioId}
+        onEnterApp={(scenarioId) => {
+          if (scenarioId) {
+            handleScenarioChange(scenarioId);
+          }
+          setActiveMapMode('tactical');
+          setShowLandingPage(false);
+        }}
+      />
+    );
+  }
 
   if (!scenario) {
     return (
@@ -291,6 +346,24 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans">
+      {/* Google Maps Platform In-App Quota Defense Banner */}
+      {quotaExceeded && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm">
+          <span>
+            Google Maps Platform quota reached. If you are the app owner, visit{' '}
+            <a
+              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-amber-950 hover:text-amber-800"
+            >
+              maps developer site
+            </a>{' '}
+            for instructions to update your account.
+          </span>
+        </div>
+      )}
+
       {/* 1. Command Header */}
       <Header
         currentScenario={scenario}
@@ -304,6 +377,7 @@ export default function App() {
         onOpenCopernicus={() => setIsCopernicusOpen(true)}
         onOpenCarto={() => setIsCartoOpen(true)}
         onOpenPitchDeck={() => setIsPitchDeckOpen(true)}
+        onReturnToLanding={() => setShowLandingPage(true)}
         activeMapMode={activeMapMode}
         onSelectMapMode={setActiveMapMode}
         pipelineProgress={pipelineProgress}
@@ -336,36 +410,23 @@ export default function App() {
 
       {/* 4. Main GIS Canvas & Floating Temporal Controller */}
       <div className="flex-1 relative overflow-hidden">
-        {activeMapMode === 'carto' ? (
-          <CartoMainView
-            scenario={scenario}
-            mapUrl="https://thunbergii.app.carto.com/map/a7e2b3ad-4505-4663-8404-2d7ee51f9c6c"
-            onOpenTacticalGis={() => setActiveMapMode('tactical')}
-            onOpenCopernicus={() => setIsCopernicusOpen(true)}
-            onOpenCopernicusView={() => setActiveMapMode('copernicus')}
-          />
-        ) : activeMapMode === 'copernicus' ? (
+        {activeMapMode === 'copernicus' ? (
           <CopernicusMainView
             scenario={scenario}
-            onOpenTacticalGis={() => setActiveMapMode('tactical')}
-            onOpenCarto={() => setActiveMapMode('carto')}
+            onOpenDetailedView={() => setActiveMapMode('detailed')}
             onOpenModal={() => setIsCopernicusOpen(true)}
           />
         ) : (
           <>
-            <MapContainer
+            <DetailedGoogleMapView
               scenario={scenario}
-              changeDetection={changeDetection}
               riskZones={riskZones}
               routesResult={routesResult}
               layerVisibility={layerVisibility}
-              onSelectFeature={setSelectedFeature}
-              selectedFeature={selectedFeature}
-              isPostEventSimulated={isPostEventSimulated}
-              timelineHour={timelineHour}
-              onUpdateLayerVisibility={(updated) => {
-                setLayerVisibility((prev) => ({ ...prev, ...updated }));
-              }}
+              onToggleLayer={handleToggleLayer}
+              onUpdateLayerVisibility={(updates) =>
+                setLayerVisibility((prev) => ({ ...prev, ...updates }))
+              }
               onOpenCopernicusView={() => setActiveMapMode('copernicus')}
             />
 

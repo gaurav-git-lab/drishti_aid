@@ -629,4 +629,593 @@ export const SCENARIOS: Record<string, DisasterScenario> = {
       ],
     },
   },
+
+  bihar: {
+    id: 'bihar',
+    name: 'Bihar Kosi-Gandak Flood Plain (Patna & North Bihar)',
+    state: 'Bihar',
+    riverBasin: 'Kosi River & Gandak Floodplain (Ganga Confluence Zone)',
+    center: [25.594, 85.137],
+    zoom: 11,
+    bounds: [
+      [25.480, 84.980],
+      [25.720, 85.320],
+    ],
+    areaKm2: 285.0,
+    disasterDate: '18 Sep 2024 Kosi-Gandak Breach (Sentinel-1 Emergency SAR)',
+    satelliteSensor: 'Sentinel-1C C-SAR (Interferometric Wide Swath)',
+    orbitPass: 'Descending Track 041',
+    sarPolarization: 'VV + VH Dual-Pol',
+    rainfall24hMm: 382,
+    epicenter: [25.600, 85.050], // Hajipur / Sonepur confluence — Gandak-Ganga junction
+    description:
+      'Catastrophic riverine inundation after simultaneous Kosi embankment breach (Supaul) and Gandak spill at Hajipur. Floodwaters inundated Muzaffarpur, Samastipur, Darbhanga districts. 42 lakh population affected. NDRF teams deployed from Patna, Vaishali, and Muzaffarpur.',
+    shelters: [
+      {
+        id: 'bih_sh_1',
+        name: 'NDRF 9th Battalion Patna Advance Base',
+        type: 'ndrf_base',
+        coordinates: [25.609, 85.178],
+        capacity: 2000,
+        currentOccupancy: 380,
+        medicalStaff: 62,
+        floodSafe: true,
+        contact: '+91 612 222 4567',
+        supplies: { foodPacks: 18000, waterLiters: 72000, ambulances: 14, rescueBoats: 28 },
+      },
+      {
+        id: 'bih_sh_2',
+        name: 'Patna Medical College & Hospital (PMCH)',
+        type: 'hospital',
+        coordinates: [25.619, 85.135],
+        capacity: 2500,
+        currentOccupancy: 2100,
+        medicalStaff: 320,
+        floodSafe: true,
+        contact: '+91 612 267 2331',
+        supplies: { foodPacks: 6000, waterLiters: 22000, ambulances: 28, rescueBoats: 4 },
+      },
+      {
+        id: 'bih_sh_3',
+        name: 'Gandhi Maidan Flood Relief Mega Camp',
+        type: 'shelter',
+        coordinates: [25.610, 85.143],
+        capacity: 8000,
+        currentOccupancy: 5400,
+        medicalStaff: 48,
+        floodSafe: true,
+        contact: '+91 612 222 5001',
+        supplies: { foodPacks: 35000, waterLiters: 120000, ambulances: 10, rescueBoats: 12 },
+      },
+      {
+        id: 'bih_sh_4',
+        name: 'Nalanda Medical College Hospital',
+        type: 'hospital',
+        coordinates: [25.624, 85.165],
+        capacity: 1200,
+        currentOccupancy: 980,
+        medicalStaff: 175,
+        floodSafe: true,
+        contact: '+91 612 267 7788',
+        supplies: { foodPacks: 4500, waterLiters: 15000, ambulances: 16, rescueBoats: 3 },
+      },
+      {
+        id: 'bih_sh_5',
+        name: 'Patna Airport IAF Helipad (Lok Nayak Jai Prakash)',
+        type: 'helipad',
+        coordinates: [25.591, 85.088],
+        capacity: 1500,
+        currentOccupancy: 290,
+        medicalStaff: 35,
+        floodSafe: true,
+        contact: '+91 612 222 6800',
+        supplies: { foodPacks: 22000, waterLiters: 80000, ambulances: 18, rescueBoats: 22 },
+      },
+      {
+        id: 'bih_sh_6',
+        name: 'Danapur Cantonment NDRF Depot & Staging Area',
+        type: 'ndrf_base',
+        coordinates: [25.622, 85.045],
+        capacity: 3000,
+        currentOccupancy: 640,
+        medicalStaff: 52,
+        floodSafe: true,
+        contact: '+91 612 272 1234',
+        supplies: { foodPacks: 25000, waterLiters: 90000, ambulances: 20, rescueBoats: 35 },
+      },
+    ],
+    roadNetwork: {
+      nodes: [
+        { id: 'bih_epicenter',   coordinates: [25.600, 85.050], name: 'Hajipur Gandak-Ganga Confluence' },
+        { id: 'bih_pmch',        coordinates: [25.619, 85.135], name: 'PMCH Patna' },
+        { id: 'bih_gandhi',      coordinates: [25.610, 85.143], name: 'Gandhi Maidan Relief Camp' },
+        { id: 'bih_airport',     coordinates: [25.591, 85.088], name: 'Patna Airport Helipad' },
+        { id: 'bih_danapur',     coordinates: [25.622, 85.045], name: 'Danapur NDRF Depot' },
+        { id: 'bih_ndrf_base',   coordinates: [25.609, 85.178], name: 'NDRF 9th Bn Patna' },
+        { id: 'bih_rajendranagar', coordinates: [25.558, 85.105], name: 'Rajendra Nagar NH-83 Junction' },
+        { id: 'bih_hajipur_nh',  coordinates: [25.683, 85.213], name: 'Hajipur NH-31 Mahatma Gandhi Setu' },
+      ],
+      edges: [
+        { id: 'be1', from: 'bih_epicenter',  to: 'bih_airport',      type: 'highway',  distanceKm: 5.2, lanes: 4, baseSpeedKmh: 50 },
+        { id: 'be2', from: 'bih_airport',    to: 'bih_gandhi',       type: 'arterial', distanceKm: 3.8, lanes: 4, baseSpeedKmh: 40 },
+        { id: 'be3', from: 'bih_gandhi',     to: 'bih_pmch',         type: 'arterial', distanceKm: 1.2, lanes: 4, baseSpeedKmh: 35 },
+        { id: 'be4', from: 'bih_pmch',       to: 'bih_ndrf_base',    type: 'arterial', distanceKm: 3.5, lanes: 4, baseSpeedKmh: 40 },
+        { id: 'be5', from: 'bih_danapur',    to: 'bih_airport',      type: 'highway',  distanceKm: 3.9, lanes: 6, baseSpeedKmh: 60 },
+        { id: 'be6', from: 'bih_epicenter',  to: 'bih_hajipur_nh',   type: 'bridge',   distanceKm: 9.8, lanes: 4, baseSpeedKmh: 45 },
+        { id: 'be7', from: 'bih_hajipur_nh', to: 'bih_ndrf_base',    type: 'highway',  distanceKm: 6.5, lanes: 4, baseSpeedKmh: 50 },
+        { id: 'be8', from: 'bih_rajendranagar', to: 'bih_airport',   type: 'highway',  distanceKm: 4.1, lanes: 6, baseSpeedKmh: 55 },
+      ],
+    },
+  },
 };
+
+// Generator for any city scenario with realistic bounds, shelters, and roads
+export function createScenarioForCity(
+  id: string,
+  name: string,
+  state: string,
+  riverBasin: string,
+  center: [number, number],
+  bounds: [[number, number], [number, number]],
+  rainfall24hMm: number = 320,
+  areaKm2: number = 220
+): DisasterScenario {
+  const [lat, lng] = center;
+  const dLat = (bounds[1][0] - bounds[0][0]) * 0.25;
+  const dLng = (bounds[1][1] - bounds[0][1]) * 0.25;
+
+  const shelters: ShelterPoint[] = [
+    {
+      id: `${id}_sh_1`,
+      name: `${name} Central High-Ground Relief Camp`,
+      type: 'shelter',
+      coordinates: [lat + dLat * 0.45, lng - dLng * 0.55],
+      capacity: 3500,
+      currentOccupancy: 820,
+      medicalStaff: 28,
+      floodSafe: true,
+      contact: '+91 11 2345 6701',
+      supplies: { foodPacks: 12000, waterLiters: 40000, ambulances: 8, rescueBoats: 6 },
+    },
+    {
+      id: `${id}_sh_2`,
+      name: `${name} District Civil Hospital & Trauma Center`,
+      type: 'hospital',
+      coordinates: [lat - dLat * 0.55, lng + dLng * 0.45],
+      capacity: 1200,
+      currentOccupancy: 950,
+      medicalStaff: 140,
+      floodSafe: true,
+      contact: '+91 11 2345 6702',
+      supplies: { foodPacks: 4500, waterLiters: 16000, ambulances: 14, rescueBoats: 3 },
+    },
+    {
+      id: `${id}_sh_3`,
+      name: `${name} Lowland Emergency Medical Station`,
+      type: 'hospital',
+      coordinates: [lat + dLat * 0.15, lng + dLng * 0.25],
+      capacity: 450,
+      currentOccupancy: 410,
+      medicalStaff: 40,
+      floodSafe: false,
+      contact: '+91 11 2345 6703',
+      supplies: { foodPacks: 1500, waterLiters: 6000, ambulances: 4, rescueBoats: 4 },
+    },
+    {
+      id: `${id}_sh_4`,
+      name: `${name} University Campus Relief Hub`,
+      type: 'shelter',
+      coordinates: [lat + dLat * 0.85, lng + dLng * 0.75],
+      capacity: 4000,
+      currentOccupancy: 500,
+      medicalStaff: 22,
+      floodSafe: true,
+      contact: '+91 11 2345 6704',
+      supplies: { foodPacks: 15000, waterLiters: 50000, ambulances: 6, rescueBoats: 5 },
+    },
+    {
+      id: `${id}_sh_5`,
+      name: `${name} NDRF Rapid Deployment & Helipad Base`,
+      type: 'ndrf_base',
+      coordinates: [lat - dLat * 0.85, lng - dLng * 0.75],
+      capacity: 800,
+      currentOccupancy: 120,
+      medicalStaff: 35,
+      floodSafe: true,
+      contact: '+91 11 2345 6705',
+      supplies: { foodPacks: 8000, waterLiters: 30000, ambulances: 10, rescueBoats: 16 },
+    },
+  ];
+
+  const roadNetwork: RoadNetwork = {
+    nodes: [
+      { id: `${id}_n1`, coordinates: [lat, lng], name: `${name} River Basin Hub` },
+      { id: `${id}_n2`, coordinates: shelters[0].coordinates, name: shelters[0].name },
+      { id: `${id}_n3`, coordinates: shelters[1].coordinates, name: shelters[1].name },
+      { id: `${id}_n4`, coordinates: shelters[2].coordinates, name: shelters[2].name },
+      { id: `${id}_n5`, coordinates: shelters[3].coordinates, name: shelters[3].name },
+      { id: `${id}_n6`, coordinates: shelters[4].coordinates, name: shelters[4].name },
+    ],
+    edges: [
+      { id: `${id}_e1`, from: `${id}_n1`, to: `${id}_n2`, type: 'highway', distanceKm: 2.8, lanes: 4, baseSpeedKmh: 50 },
+      { id: `${id}_e2`, from: `${id}_n1`, to: `${id}_n3`, type: 'arterial', distanceKm: 3.5, lanes: 4, baseSpeedKmh: 40 },
+      { id: `${id}_e3`, from: `${id}_n2`, to: `${id}_n5`, type: 'highway', distanceKm: 4.2, lanes: 6, baseSpeedKmh: 60 },
+      { id: `${id}_e4`, from: `${id}_n3`, to: `${id}_n6`, type: 'highway', distanceKm: 3.8, lanes: 4, baseSpeedKmh: 55 },
+      { id: `${id}_e5`, from: `${id}_n1`, to: `${id}_n4`, type: 'local', distanceKm: 1.5, lanes: 2, baseSpeedKmh: 30 },
+      { id: `${id}_e6`, from: `${id}_n4`, to: `${id}_n5`, type: 'arterial', distanceKm: 3.1, lanes: 4, baseSpeedKmh: 45 },
+    ],
+  };
+
+  return {
+    id,
+    name: `${name} Basin`,
+    state,
+    riverBasin,
+    center,
+    zoom: 12,
+    bounds,
+    areaKm2,
+    disasterDate: 'Active Cloudburst & Monsoon Event (Sentinel-1 SAR Pass)',
+    satelliteSensor: 'Sentinel-1C C-SAR (Interferometric Wide)',
+    orbitPass: 'Ascending Track 116',
+    sarPolarization: 'VV + VH Dual-Pol',
+    rainfall24hMm,
+    epicenter: [lat + dLat * 0.1, lng + dLng * 0.1],
+    shelters,
+    roadNetwork,
+    description: `High-density urban flood scenario along ${riverBasin} in ${name}, ${state}. Synthetic Aperture Radar microwave backscatter detection active.`,
+  };
+}
+
+// Pre-register all major Indian cities with their precise coordinates and bounding boxes
+const PRESET_CITIES: Array<{
+  id: string;
+  name: string;
+  state: string;
+  riverBasin: string;
+  center: [number, number];
+  bounds: [[number, number], [number, number]];
+  rainfallMm: number;
+  areaKm2: number;
+}> = [
+  {
+    id: 'delhi',
+    name: 'Delhi NCR',
+    state: 'National Capital Region',
+    riverBasin: 'Yamuna River Floodplain Basin',
+    center: [28.6139, 77.2090],
+    bounds: [[28.48, 77.02], [28.78, 77.36]],
+    rainfallMm: 340,
+    areaKm2: 260,
+  },
+  {
+    id: 'bengaluru',
+    name: 'Bengaluru',
+    state: 'Karnataka',
+    riverBasin: 'Vrishabhavathi & Bellandur Lake Basin',
+    center: [12.9716, 77.5946],
+    bounds: [[12.83, 77.46], [13.14, 77.75]],
+    rainfallMm: 290,
+    areaKm2: 240,
+  },
+  {
+    id: 'kolkata',
+    name: 'Kolkata',
+    state: 'West Bengal',
+    riverBasin: 'Hooghly River & Lower Ganga Delta',
+    center: [22.5726, 88.3639],
+    bounds: [[22.42, 88.24], [22.72, 88.48]],
+    rainfallMm: 380,
+    areaKm2: 250,
+  },
+  {
+    id: 'hyderabad',
+    name: 'Hyderabad',
+    state: 'Telangana',
+    riverBasin: 'Musi River Catchment Basin',
+    center: [17.3850, 78.4867],
+    bounds: [[17.25, 78.32], [17.52, 78.62]],
+    rainfallMm: 310,
+    areaKm2: 230,
+  },
+  {
+    id: 'pune',
+    name: 'Pune',
+    state: 'Maharashtra',
+    riverBasin: 'Mula-Mutha River & Khadakwasla Basin',
+    center: [18.5204, 73.8567],
+    bounds: [[18.42, 73.74], [18.64, 73.98]],
+    rainfallMm: 350,
+    areaKm2: 220,
+  },
+  {
+    id: 'ahmedabad',
+    name: 'Ahmedabad',
+    state: 'Gujarat',
+    riverBasin: 'Sabarmati River & Dharoi Basin',
+    center: [23.0225, 72.5714],
+    bounds: [[22.92, 72.46], [23.14, 72.68]],
+    rainfallMm: 280,
+    areaKm2: 210,
+  },
+  {
+    id: 'kochi',
+    name: 'Kochi',
+    state: 'Kerala',
+    riverBasin: 'Periyar Coastal Estuary & Backwaters',
+    center: [9.9312, 76.2673],
+    bounds: [[9.86, 76.18], [10.06, 76.38]],
+    rainfallMm: 460,
+    areaKm2: 190,
+  },
+  {
+    id: 'thiruvananthapuram',
+    name: 'Thiruvananthapuram',
+    state: 'Kerala',
+    riverBasin: 'Karamana & Neyyar River Basin',
+    center: [8.5241, 76.9366],
+    bounds: [[8.42, 76.84], [8.62, 77.04]],
+    rainfallMm: 360,
+    areaKm2: 200,
+  },
+  {
+    id: 'patna',
+    name: 'Patna',
+    state: 'Bihar',
+    riverBasin: 'Ganges & Son Confluence Floodplain',
+    center: [25.5941, 85.1376],
+    bounds: [[25.50, 85.02], [25.70, 85.25]],
+    rainfallMm: 410,
+    areaKm2: 230,
+  },
+  {
+    id: 'guwahati',
+    name: 'Guwahati',
+    state: 'Assam',
+    riverBasin: 'Brahmaputra Valley River Basin',
+    center: [26.1445, 91.7362],
+    bounds: [[26.06, 91.62], [26.24, 91.85]],
+    rainfallMm: 490,
+    areaKm2: 250,
+  },
+  {
+    id: 'bhubaneswar',
+    name: 'Bhubaneswar',
+    state: 'Odisha',
+    riverBasin: 'Mahanadi River Delta & Kuakhai Basin',
+    center: [20.2961, 85.8245],
+    bounds: [[20.20, 85.72], [20.40, 85.92]],
+    rainfallMm: 370,
+    areaKm2: 210,
+  },
+  {
+    id: 'surat',
+    name: 'Surat',
+    state: 'Gujarat',
+    riverBasin: 'Tapi River Estuary & Ukai Basin',
+    center: [21.1702, 72.8311],
+    bounds: [[21.08, 72.72], [21.28, 72.94]],
+    rainfallMm: 430,
+    areaKm2: 220,
+  },
+  {
+    id: 'jaipur',
+    name: 'Jaipur',
+    state: 'Rajasthan',
+    riverBasin: 'Dravyavati River Basin',
+    center: [26.9124, 75.7873],
+    bounds: [[26.80, 75.68], [27.02, 75.90]],
+    rainfallMm: 220,
+    areaKm2: 230,
+  },
+  {
+    id: 'lucknow',
+    name: 'Lucknow',
+    state: 'Uttar Pradesh',
+    riverBasin: 'Gomti River Floodplain',
+    center: [26.8467, 80.9462],
+    bounds: [[26.74, 80.84], [26.96, 81.06]],
+    rainfallMm: 310,
+    areaKm2: 220,
+  },
+  {
+    id: 'indore',
+    name: 'Indore',
+    state: 'Madhya Pradesh',
+    riverBasin: 'Kahn & Saraswati River Catchment',
+    center: [22.7196, 75.8577],
+    bounds: [[22.62, 75.75], [22.82, 75.96]],
+    rainfallMm: 290,
+    areaKm2: 210,
+  },
+  {
+    id: 'visakhapatnam',
+    name: 'Visakhapatnam',
+    state: 'Andhra Pradesh',
+    riverBasin: 'Eastern Ghats Coastal Basin',
+    center: [17.6868, 83.2185],
+    bounds: [[17.58, 83.10], [17.80, 83.34]],
+    rainfallMm: 380,
+    areaKm2: 220,
+  },
+  {
+    id: 'srinagar',
+    name: 'Srinagar',
+    state: 'Jammu & Kashmir',
+    riverBasin: 'Jhelum River & Dal Lake Basin',
+    center: [34.0837, 74.7973],
+    bounds: [[33.98, 74.68], [34.18, 74.92]],
+    rainfallMm: 290,
+    areaKm2: 200,
+  },
+  {
+    id: 'coimbatore',
+    name: 'Coimbatore',
+    state: 'Tamil Nadu',
+    riverBasin: 'Noyyal River Basin',
+    center: [11.0168, 76.9558],
+    bounds: [[10.92, 76.85], [11.12, 77.06]],
+    rainfallMm: 250,
+    areaKm2: 210,
+  },
+  {
+    id: 'madurai',
+    name: 'Madurai',
+    state: 'Tamil Nadu',
+    riverBasin: 'Vaigai River Basin',
+    center: [9.9252, 78.1198],
+    bounds: [[9.82, 78.02], [10.02, 78.22]],
+    rainfallMm: 270,
+    areaKm2: 200,
+  },
+  {
+    id: 'varanasi',
+    name: 'Varanasi',
+    state: 'Uttar Pradesh',
+    riverBasin: 'Ganga & Varuna River Floodplain',
+    center: [25.3176, 82.9739],
+    bounds: [[25.22, 82.88], [25.42, 83.08]],
+    rainfallMm: 390,
+    areaKm2: 210,
+  },
+  {
+    id: 'chandigarh',
+    name: 'Chandigarh',
+    state: 'Punjab/Haryana',
+    riverBasin: 'Sukhna Lake Catchment Basin',
+    center: [30.7333, 76.7794],
+    bounds: [[30.64, 76.68], [30.82, 76.88]],
+    rainfallMm: 280,
+    areaKm2: 190,
+  },
+  {
+    id: 'nagpur',
+    name: 'Nagpur',
+    state: 'Maharashtra',
+    riverBasin: 'Nag & Pili River Catchment',
+    center: [21.1458, 79.0882],
+    bounds: [[21.05, 78.98], [21.25, 79.18]],
+    rainfallMm: 310,
+    areaKm2: 220,
+  },
+  {
+    id: 'bhopal',
+    name: 'Bhopal',
+    state: 'Madhya Pradesh',
+    riverBasin: 'Upper & Lower Lake Catchment',
+    center: [23.2599, 77.4126],
+    bounds: [[23.16, 77.30], [23.36, 77.52]],
+    rainfallMm: 330,
+    areaKm2: 210,
+  },
+  {
+    id: 'dehradun',
+    name: 'Dehradun',
+    state: 'Uttarakhand',
+    riverBasin: 'Song & Asan River Valley',
+    center: [30.3165, 78.0322],
+    bounds: [[30.22, 77.94], [30.40, 78.14]],
+    rainfallMm: 440,
+    areaKm2: 200,
+  },
+  {
+    id: 'shimla',
+    name: 'Shimla',
+    state: 'Himachal Pradesh',
+    riverBasin: 'Sutlej Catchment Basin',
+    center: [31.1048, 77.1734],
+    bounds: [[31.02, 77.08], [31.18, 77.26]],
+    rainfallMm: 380,
+    areaKm2: 180,
+  },
+  {
+    id: 'amritsar',
+    name: 'Amritsar',
+    state: 'Punjab',
+    riverBasin: 'Beas & Ravi River Basin',
+    center: [31.6340, 74.8723],
+    bounds: [[31.54, 74.78], [31.72, 74.98]],
+    rainfallMm: 270,
+    areaKm2: 200,
+  },
+  {
+    id: 'kanpur',
+    name: 'Kanpur',
+    state: 'Uttar Pradesh',
+    riverBasin: 'Ganges Floodplain Basin',
+    center: [26.4499, 80.3319],
+    bounds: [[26.35, 80.22], [26.55, 80.44]],
+    rainfallMm: 350,
+    areaKm2: 230,
+  },
+  {
+    id: 'agra',
+    name: 'Agra',
+    state: 'Uttar Pradesh',
+    riverBasin: 'Yamuna River Basin',
+    center: [27.1767, 78.0081],
+    bounds: [[27.08, 77.90], [27.26, 78.10]],
+    rainfallMm: 260,
+    areaKm2: 210,
+  },
+];
+
+// Populate SCENARIOS dictionary
+for (const p of PRESET_CITIES) {
+  SCENARIOS[p.id] = createScenarioForCity(
+    p.id,
+    p.name,
+    p.state,
+    p.riverBasin,
+    p.center,
+    p.bounds,
+    p.rainfallMm,
+    p.areaKm2
+  );
+}
+
+// Dynamic Scenario Resolver: works for ANY city query
+export function getScenario(query: string = 'mumbai'): DisasterScenario {
+  if (!query) return SCENARIOS.mumbai;
+  const cleanKey = query.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
+
+  if (SCENARIOS[cleanKey]) {
+    return SCENARIOS[cleanKey];
+  }
+
+  // Check matching by name
+  const foundKey = Object.keys(SCENARIOS).find(
+    (k) =>
+      k.toLowerCase() === cleanKey ||
+      SCENARIOS[k].name.toLowerCase().includes(cleanKey) ||
+      SCENARIOS[k].state.toLowerCase().includes(cleanKey)
+  );
+  if (foundKey) {
+    return SCENARIOS[foundKey];
+  }
+
+  // Fallback: Dynamically generate a custom city scenario based on hash-offset or Delhi baseline
+  const nameCapitalized = query.charAt(0).toUpperCase() + query.slice(1);
+  const hash = query.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const latOffset = ((hash % 100) - 50) * 0.05;
+  const lngOffset = (((hash * 7) % 100) - 50) * 0.05;
+  const centerLat = 20.5937 + latOffset; // Centered around India
+  const centerLng = 78.9629 + lngOffset;
+
+  const generated = createScenarioForCity(
+    cleanKey,
+    nameCapitalized,
+    'India',
+    `${nameCapitalized} Catchment Basin`,
+    [centerLat, centerLng],
+    [
+      [centerLat - 0.08, centerLng - 0.09],
+      [centerLat + 0.08, centerLng + 0.09],
+    ],
+    310,
+    220
+  );
+
+  SCENARIOS[cleanKey] = generated;
+  return generated;
+}
