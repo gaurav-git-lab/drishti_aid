@@ -1,6 +1,0 @@
-{
-  "name": "DRISHTI-AID Preview Studio",
-  "description": "Interactive preview player and motion inspector for the DRISHTI-AID C-Band SAR flood rescue pitch video.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
