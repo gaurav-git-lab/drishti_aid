@@ -2,23 +2,21 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Satellite,
   Play,
-  FileText,
   Radio,
-  BrainCircuit,
   Database,
   RefreshCw,
   MapPin,
-  Globe2,
   Maximize2,
   Minimize2,
   BarChart2,
-  Sparkles,
   Layers,
   Search,
   X,
   ChevronDown,
+  CloudRain,
+  Wind,
 } from 'lucide-react';
-import { DisasterScenario, PipelineProgress } from '../types';
+import { DisasterScenario, PipelineProgress, LayerVisibility } from '../types';
 
 interface CityRecord {
   name: string;
@@ -64,10 +62,10 @@ interface HeaderProps {
   onLoadData: () => void;
   onSimulatePostEvent: () => void;
   onRunAnalysis: () => void;
-  onOpenReport: () => void;
-  onOpenAiBriefing: () => void;
-  onOpenGeeComparison: () => void;
-  onOpenCopernicus: () => void;
+  onOpenReport?: () => void;
+  onOpenAiBriefing?: () => void;
+  onOpenGeeComparison?: () => void;
+  onOpenCopernicus?: () => void;
   onOpenCarto: () => void;
   onOpenPitchDeck?: () => void;
   pipelineProgress: PipelineProgress;
@@ -81,6 +79,8 @@ interface HeaderProps {
   activeMapMode?: 'detailed' | 'copernicus';
   onSelectMapMode?: (mode: 'detailed' | 'copernicus') => void;
   onReturnToLanding?: () => void;
+  layerVisibility?: LayerVisibility;
+  onToggleLayer?: (layer: keyof LayerVisibility) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -106,6 +106,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMetrics,
   activeMapMode = 'detailed',
   onSelectMapMode,
+  layerVisibility,
+  onToggleLayer,
 }) => {
   const [citySearchQuery, setCitySearchQuery] = useState('');
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
@@ -387,81 +389,79 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <span>Run Pipeline</span>
           </button>
-
-          <div className="w-px h-4 bg-slate-800 mx-0.5" />
-
-          {/* Copernicus Satellite Data */}
-          <button
-            onClick={onOpenCopernicus}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-950/70 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/40 transition active:scale-95"
-            title="Browse live Sentinel Data via Copernicus"
-          >
-            <Satellite className="w-3 h-3 text-indigo-400" />
-            <span className="hidden sm:inline">Copernicus</span>
-            <span className="sm:hidden">CDSE</span>
-          </button>
-
-          {/* GEE Satellite Before & After Comparison */}
-          <button
-            id="btn-gee-comparison"
-            onClick={onOpenGeeComparison}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 transition active:scale-95"
-            title="Inspect Before & After Satellite Comparison via Earth Engine"
-          >
-            <Globe2 className="w-3 h-3 text-cyan-400" />
-            <span className="hidden sm:inline">GEE Compare</span>
-            <span className="sm:hidden">GEE</span>
-          </button>
-
-          {/* AI Tactical Briefing */}
-          <button
-            id="btn-ai-briefing"
-            onClick={onOpenAiBriefing}
-            disabled={!hasAnalysisResults}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg border transition ${
-              hasAnalysisResults
-                ? 'bg-purple-950/50 text-purple-300 border-purple-500/50 hover:bg-purple-900/50'
-                : 'bg-slate-900/40 text-slate-600 border-slate-800 cursor-not-allowed opacity-50'
-            }`}
-            title="AI NDRF Incident Commander Briefing"
-          >
-            <BrainCircuit className="w-3 h-3 text-purple-400" />
-            <span className="hidden lg:inline">AI Briefing</span>
-          </button>
-
-          {/* SITREP Report */}
-          <button
-            id="btn-export-report"
-            onClick={onOpenReport}
-            disabled={!hasAnalysisResults}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg border transition ${
-              hasAnalysisResults
-                ? 'bg-emerald-950/50 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900/50'
-                : 'bg-slate-900/40 text-slate-600 border-slate-800 cursor-not-allowed opacity-50'
-            }`}
-            title="Download Official SITREP"
-          >
-            <FileText className="w-3 h-3 text-emerald-400" />
-            <span className="hidden lg:inline">SITREP</span>
-          </button>
-
-          {/* Pitch Deck Button */}
-          {onOpenPitchDeck && (
-            <button
-              id="btn-pitch-deck"
-              onClick={onOpenPitchDeck}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 shadow-sm transition active:scale-95"
-              title="Open 1-Page PDF Executive Pitch Deck"
-            >
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span className="hidden sm:inline">Pitch Deck</span>
-              <span className="sm:hidden">Deck</span>
-            </button>
-          )}
         </div>
 
         {/* Right: Map-First View Toggles (Zen Map & Metrics) */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Quick Layer Switches moved from StatsPanel */}
+          {layerVisibility && onToggleLayer && (
+            <div className="hidden lg:flex items-center gap-1 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 text-[11px]">
+              <span className="px-1 text-[10px] text-slate-500 font-mono">LAYERS:</span>
+              <button
+                onClick={() => onToggleLayer('floodExtent')}
+                className={`px-2 py-0.5 rounded transition font-medium ${
+                  layerVisibility.floodExtent
+                    ? 'bg-blue-500/20 text-blue-300'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+              >
+                Flood
+              </button>
+              <button
+                onClick={() => onToggleLayer('riskZones')}
+                className={`px-2 py-0.5 rounded transition font-medium ${
+                  layerVisibility.riskZones
+                    ? 'bg-rose-500/20 text-rose-300'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+              >
+                Risk
+              </button>
+              <button
+                onClick={() => onToggleLayer('safeRoutes')}
+                className={`px-2 py-0.5 rounded transition font-medium ${
+                  layerVisibility.safeRoutes
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+              >
+                Corridors
+              </button>
+              <button
+                onClick={() => onToggleLayer('shelters')}
+                className={`px-2 py-0.5 rounded transition font-medium ${
+                  layerVisibility.shelters
+                    ? 'bg-indigo-500/20 text-indigo-300'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+              >
+                Shelters
+              </button>
+              <button
+                onClick={() => onToggleLayer('weatherPrecipitation')}
+                className={`px-2 py-0.5 rounded transition font-medium flex items-center gap-1 ${
+                  layerVisibility.weatherPrecipitation
+                    ? 'bg-blue-400/20 text-blue-300'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+                title="Live Precipitation Radar"
+              >
+                <CloudRain className="w-3 h-3" /> Rain
+              </button>
+              <button
+                onClick={() => onToggleLayer('weatherWind')}
+                className={`px-2 py-0.5 rounded transition font-medium flex items-center gap-1 ${
+                  layerVisibility.weatherWind
+                    ? 'bg-purple-400/20 text-purple-300'
+                    : 'text-slate-500 hover:text-slate-400'
+                }`}
+                title="Live Wind Speed"
+              >
+                <Wind className="w-3 h-3" /> Wind
+              </button>
+            </div>
+          )}
+
           {/* Toggle Metrics Bar */}
           <button
             onClick={onToggleMetrics}

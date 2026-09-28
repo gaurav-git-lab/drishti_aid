@@ -11,7 +11,6 @@ import {
   ExternalLink,
   CloudRain,
   Wind,
-  Satellite,
 } from 'lucide-react';
 import {
   DisasterScenario,
@@ -139,85 +138,8 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
             </button>
           </div>
 
-          {/* Right Controls: Quick Layer Switches & Expand Details */}
+          {/* Right Controls: Expand Details */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <div className="hidden lg:flex items-center gap-1 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 text-[11px]">
-              <span className="px-1 text-[10px] text-slate-500 font-mono">LAYERS:</span>
-              <button
-                onClick={() => onToggleLayer('floodExtent')}
-                className={`px-2 py-0.5 rounded transition font-medium ${
-                  layerVisibility.floodExtent
-                    ? 'bg-blue-500/20 text-blue-300'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-              >
-                Flood
-              </button>
-              <button
-                onClick={() => onToggleLayer('riskZones')}
-                className={`px-2 py-0.5 rounded transition font-medium ${
-                  layerVisibility.riskZones
-                    ? 'bg-rose-500/20 text-rose-300'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-              >
-                Risk
-              </button>
-              <button
-                onClick={() => onToggleLayer('safeRoutes')}
-                className={`px-2 py-0.5 rounded transition font-medium ${
-                  layerVisibility.safeRoutes
-                    ? 'bg-emerald-500/20 text-emerald-300'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-              >
-                Corridors
-              </button>
-              <button
-                onClick={() => onToggleLayer('shelters')}
-                className={`px-2 py-0.5 rounded transition font-medium ${
-                  layerVisibility.shelters
-                    ? 'bg-indigo-500/20 text-indigo-300'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-              >
-                Shelters
-              </button>
-              <button
-                onClick={() => onToggleLayer('weatherPrecipitation')}
-                className={`px-2 py-0.5 rounded transition font-medium flex items-center gap-1 ${
-                  layerVisibility.weatherPrecipitation
-                    ? 'bg-blue-400/20 text-blue-300'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-                title="Live Precipitation Radar"
-              >
-                <CloudRain className="w-3 h-3" /> Rain
-              </button>
-              <button
-                onClick={() => onToggleLayer('weatherWind')}
-                className={`px-2 py-0.5 rounded transition font-medium flex items-center gap-1 ${
-                  layerVisibility.weatherWind
-                    ? 'bg-purple-400/20 text-purple-300'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-                title="Live Wind Speed"
-              >
-                <Wind className="w-3 h-3" /> Wind
-              </button>
-              <button
-                onClick={() => onToggleLayer('copernicusSentinel')}
-                className={`px-2 py-0.5 rounded transition font-medium flex items-center gap-1 ${
-                  layerVisibility.copernicusSentinel
-                    ? 'bg-indigo-500/25 text-indigo-300 border border-indigo-500/40'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-                title="Toggle Copernicus Data Space Ecosystem (CDSE) Live Sentinel-1 SAR Orbit Swaths"
-              >
-                <Satellite className="w-3 h-3 text-indigo-400" /> CDSE Swath
-              </button>
-            </div>
-
             {/* Expand Details Button */}
             <button
               onClick={onToggleExpand}

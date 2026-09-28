@@ -388,6 +388,8 @@ export default function App() {
         onToggleZenMode={() => setIsZenMode((prev) => !prev)}
         isMetricsExpanded={isMetricsExpanded}
         onToggleMetrics={() => setIsMetricsExpanded((prev) => !prev)}
+        layerVisibility={layerVisibility}
+        onToggleLayer={handleToggleLayer}
       />
 
       {/* 2. Pipeline Progress Bar & SLA Telemetry (<30s) */}
